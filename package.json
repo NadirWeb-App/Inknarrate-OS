@@ -1,0 +1,22 @@
+{
+  "name": "inknarrate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Client-side text-to-speech in the browser (Kitten TTS and Kokoro via onnxruntime-web; you add the model files yourself).",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "bundle": "node scripts/build-bundle.mjs",
+    "serve": "node serve.mjs"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "1.2.7",
+    "espeak-ng": "1.0.2",
+    "jszip": "3.10.2",
+    "libtashkeel-wasm": "1.6.4",
+    "onnxruntime-web": "1.30.0",
+    "phonemizer": "1.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

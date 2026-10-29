@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inknarrate: free offline text to speech in your browser</title>
+<meta name="description" content="Free text to speech that runs entirely in your browser. Natural English, Spanish and Arabic voices, private, no sign-up, works offline. Export MP3 or WAV.">
+<meta name="theme-color" content="#d8d8d8">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./ui/fonts.css">
+<link rel="stylesheet" href="./ui/inkplainer-ui.css">
+<link rel="stylesheet" href="./ui/tts.css">
+</head>
+<body class="ink-root tts-page">
+<noscript><p class="tts-noscript">Inknarrate needs JavaScript and WebAssembly to turn text into speech in your browser. Please enable JavaScript, or use a current version of Chrome, Edge, Firefox or Safari.</p></noscript>
+
+<header class="ink-topbar">
+  <div class="tts-dd tts-logo-dd">
+    <button id="logoBtn" class="ink-logo tts-logo-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="logoMenu" aria-label="Inknarrate menu">
+      <span class="ink-logo__icon" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 10v4M7.5 6v12M12 8.5v7M16.5 4v16M21 10v4"/></svg>
+      </span>
+      <span class="ink-logo__word">Inknarrate</span>
+      <svg class="tts-chev tts-logo-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div id="logoMenu" class="ink-menu tts-dd__menu tts-dd__menu--left" role="menu" hidden>
+      <div class="ink-menu__header"><span class="ink-menu__title">Inknarrate</span><span class="ink-menu__tagline">Free offline text to speech</span></div>
+      <div class="ink-menu__divider"></div>
+      <!--web-menu-top-->
+      <a class="ink-menu__item" role="menuitem" href="./guide/"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Documentation</a>
+      <!--web-menu-->
+      <a class="ink-menu__item" role="menuitem" href="./guide/#licences"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 7h14M5 7l-3 8a4 4 0 0 0 6 0L5 7zM19 7l-3 8a4 4 0 0 0 6 0l-3-8z"/></svg>Licences</a>
+    </div>
+  </div>
+  <h1 class="tts-sr">Inknarrate: free offline text to speech in your browser</h1>
+  <div class="ink-topbar__right">
+    <button id="openModels" class="ink-btn ink-btn--primary" type="button" data-ink-open="#modelsModal">Models</button>
+    <span class="tts-vsep" aria-hidden="true"></span>
+    <button id="tourBtn" class="ink-btn" type="button">Tutorial</button>
+    <a class="ink-btn" href="./guide/">Guide</a>
+    <div class="tts-dd tts-hide-sm">
+      <button id="appsBtn" class="ink-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="appsMenu">Other free apps <svg class="tts-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <div id="appsMenu" class="ink-menu tts-dd__menu" role="menu" hidden>
+        <a class="ink-menu__item" role="menuitem" href="https://inkplainer.pages.dev/" target="_blank" rel="noopener"><span><strong>Inkplainer</strong><br><small>Free whiteboard animation maker</small></span></a>
+      </div>
+    </div>
+    <a class="ink-btn tts-hide-sm tts-gh" href="https://github.com/NadirWeb-App/Inknarrate-OS" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.11.79-.25.79-.56v-2.16c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.17 1.18A11 11 0 0 1 12 6.03c.98 0 1.96.13 2.88.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.77.11 3.06.74.81 1.19 1.84 1.19 3.1 0 4.41-2.69 5.38-5.25 5.66.42.36.78 1.07.78 2.16v3.15c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>Open source</a>
+  </div>
+</header>
+
+<main class="tts-main">
+  <div class="tts-col">
+    <section class="tts-panel" aria-label="Text">
+      <div class="tts-panel__head">
+        <span class="ink-label">Text</span>
+        <span id="busy" class="ink-busy" role="status">
+          <span class="ink-busy__dot"></span><span class="ink-busy__dot"></span><span class="ink-busy__dot"></span>
+          <span id="busyLabel" class="ink-busy__label">Working</span>
+        </span>
+      </div>
+      <textarea id="text" class="ink-textarea tts-text" dir="auto" spellcheck="true" aria-label="Text to speak">Hello! This is a tiny voice running entirely inside your browser, with no server involved. It can read numbers like 42, dates like March 3rd, 2026, and prices like $19.99. Dr. Smith said the test passed with 98% accuracy.</textarea>
+      <div class="tts-actions">
+        <button id="speak" class="ink-btn ink-btn--cta" type="button">Speak</button>
+        <button id="stop" class="ink-btn" type="button" disabled>Stop</button>
+        <button id="dl" class="ink-btn ink-btn--danger" type="button" disabled>Download WAV</button>
+        <button id="importBtn" class="ink-btn" type="button" title="Read a .txt, .md, .srt, .vtt, .html, .epub or .docx file into the text box (you can also drop a file on the box)">Import…</button>
+        <input id="importFile" type="file" accept=".txt,.text,.md,.markdown,.srt,.vtt,.html,.htm,.xhtml,.epub,.docx" hidden>
+      </div>
+      <div class="tts-export" aria-label="Export options">
+        <div class="tts-export__row">
+          <label class="ink-label" for="expFormat">Download as</label>
+          <select id="expFormat" class="ink-select">
+            <option value="wav">WAV (lossless, large)</option>
+            <option value="mp3">MP3 (small)</option>
+          </select>
+          <span id="expKbpsRow" class="tts-export__kbps" hidden>
+            <label class="ink-label" for="expKbps">Quality</label>
+            <select id="expKbps" class="ink-select">
+              <option value="64">64 kbps (smallest)</option>
+              <option value="96" selected>96 kbps</option>
+              <option value="128">128 kbps</option>
+              <option value="160">160 kbps (best)</option>
+            </select>
+          </span>
+        </div>
+        <div class="tts-export__row tts-export__btns">
+          <button id="expSrt" class="ink-btn" type="button" disabled>Subtitles .srt</button>
+          <button id="expVtt" class="ink-btn" type="button" disabled>Subtitles .vtt</button>
+          <button id="expZip" class="ink-btn" type="button" disabled title="One audio file per sentence, plus sentences.txt and subtitles">Zip per sentence</button>
+          <button id="expCancel" class="ink-btn ink-btn--danger" type="button" hidden>Cancel export</button>
+        </div>
+        <p id="expNote" class="tts-note" hidden>The browser voice can’t be saved. Add a voice model (press <strong>Models</strong>) to download audio, subtitles or a zip.</p>
+        <p id="expStat" class="tts-note" role="status" aria-live="polite"></p>
+        <p id="expInfo" class="tts-note"></p>
+      </div>
+      <p id="stat" class="tts-stat" role="status" aria-live="polite"></p>
+      <p class="tts-hotkeys"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> speak · <kbd>Esc</kbd> stop · <kbd>Space</kbd> pause</p>
+    </section>
+
+    <section class="tts-panel" aria-label="Segments">
+      <div class="tts-panel__head">
+        <span class="ink-label">Sentences</span>
+        <span id="segSummary" class="tts-seg-summary" aria-live="polite"></span>
+      </div>
+      <div class="tts-seg-opts">
+        <div class="ink-toggle-row">
+          <span class="ink-toggle-row__label" id="lblPeriods">Split at periods</span>
+          <button id="optPeriods" class="ink-toggle is-on" type="button" aria-pressed="true" aria-labelledby="lblPeriods"></button>
+        </div>
+        <div class="ink-toggle-row">
+          <span class="ink-toggle-row__label" id="lblLines">Split at line breaks</span>
+          <button id="optLines" class="ink-toggle is-on" type="button" aria-pressed="true" aria-labelledby="lblLines"></button>
+        </div>
+      </div>
+      <div class="tts-seg-bar">
+        <button id="splitHere" class="ink-btn" type="button" title="Insert a line break at the cursor in the text box">Split at cursor</button>
+        <button id="genAll" class="ink-btn ink-btn--secondary" type="button">Generate all</button>
+      </div>
+      <div id="segList" class="tts-seg-list ink-scroll" role="list"></div>
+      <p id="segEmpty" class="tts-note" hidden>Type some text above and each sentence appears here.</p>
+      <p class="tts-note">Each sentence is generated once and kept. Edit a sentence and only that one is generated again. Use the lightning button to generate a single sentence, or “Generate all” for everything that is missing.</p>
+    </section>
+  </div>
+
+  <aside class="tts-panel" aria-label="Voice settings">
+    <span class="ink-label">Engine</span>
+    <div id="engines" class="tts-engines" role="tablist" aria-label="Engine"></div>
+
+    <div class="tts-cards">
+      <div class="ink-card">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Voice (show or hide)"><span class="ink-card__label">Voice</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+        <div class="tts-field">
+          <label class="ink-label" for="voice">Voice</label>
+          <select id="voice" class="ink-select"></select>
+        </div>
+        <div class="tts-field" data-needs="mix">
+          <label class="ink-label" for="voice2">Blend with <span class="tts-tag">experimental</span></label>
+          <select id="voice2" class="ink-select"></select>
+        </div>
+        <div class="tts-field" id="mixRow" hidden>
+          <label class="ink-label" for="fxMix">Blend amount</label>
+          <div class="ink-slider-row">
+            <input id="fxMix" class="ink-range" type="range" min="0" max="1" step="0.05" value="0.5" data-fx="mix" data-fmt="pct">
+            <output class="ink-slider-val" for="fxMix" data-fx-out="mix">0.5</output>
+          </div>
+        </div>
+        <div class="tts-field">
+          <label class="ink-label" for="speed">Speed</label>
+          <div class="ink-slider-row">
+            <input id="speed" class="ink-range" type="range" min="0.6" max="1.6" step="0.05" value="1">
+            <output id="speedOut" class="ink-slider-val" for="speed">1.00×</output>
+          </div>
+        </div>
+        <div class="tts-field" data-needs="pitch">
+          <label class="ink-label" for="fxPitch">Pitch</label>
+          <div class="ink-slider-row">
+            <input id="fxPitch" class="ink-range" type="range" min="-3" max="3" step="0.5" value="0" data-fx="pitch" data-fmt="st">
+            <output class="ink-slider-val" for="fxPitch" data-fx-out="pitch">0</output>
+          </div>
+        </div>
+        <p class="tts-note" data-needs="pitch">Pitch is a simple shift. Small changes sound fine; the voice gets a little unnatural past about ±2.</p>
+        <p id="ovrInfoRow" class="tts-note" hidden><span id="ovrInfo"></span> <button id="ovrReset" class="tts-seg__link" type="button">Reset all</button></p>
+        <div id="notice" class="ink-hint" hidden></div>
+        <p id="modelsHint" class="tts-note" hidden>Want a more natural voice? <button class="tts-seg__link" type="button" data-ink-open="#modelsModal">Add Kitten, Kokoro or Piper</button>. They run in your browser too.</p>
+        </div>
+      </div>
+      <div class="ink-card is-collapsed" data-needs="fx">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Sound (show or hide)"><span class="ink-card__label">Sound</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+        <div class="tts-field">
+          <label class="ink-label" for="fxGain">Volume boost</label>
+          <div class="ink-slider-row">
+            <input id="fxGain" class="ink-range" type="range" min="-12" max="12" step="0.5" value="0" data-fx="gain" data-fmt="db">
+            <output class="ink-slider-val" for="fxGain" data-fx-out="gain">0</output>
+          </div>
+        </div>
+        <div class="tts-field">
+          <label class="ink-label" for="fxBass">Bass</label>
+          <div class="ink-slider-row">
+            <input id="fxBass" class="ink-range" type="range" min="-8" max="8" step="1" value="0" data-fx="bass" data-fmt="db">
+            <output class="ink-slider-val" for="fxBass" data-fx-out="bass">0</output>
+          </div>
+        </div>
+        <div class="tts-field">
+          <label class="ink-label" for="fxTreble">Treble</label>
+          <div class="ink-slider-row">
+            <input id="fxTreble" class="ink-range" type="range" min="-8" max="8" step="1" value="0" data-fx="treble" data-fmt="db">
+            <output class="ink-slider-val" for="fxTreble" data-fx-out="treble">0</output>
+          </div>
+        </div>
+        <div class="tts-field tts-toggles">
+        <div class="ink-toggle-row tts-trow" title="Bring every sentence to the same peak level">
+          <span class="ink-toggle-row__label" id="lbl_tgNormalize">Even out loudness</span>
+          <button id="tgNormalize" class="ink-toggle" type="button" aria-pressed="false" aria-labelledby="lbl_tgNormalize" data-fx-toggle="normalize"></button>
+        </div>
+        <div class="ink-toggle-row tts-trow" title="Cut quiet lead-in and tail from each sentence">
+          <span class="ink-toggle-row__label" id="lbl_tgTrim">Trim silence at the edges</span>
+          <button id="tgTrim" class="ink-toggle" type="button" aria-pressed="false" aria-labelledby="lbl_tgTrim" data-fx-toggle="trim"></button>
+        </div>
+        </div>
+        <p class="tts-note">Sound and pauses apply instantly and never regenerate audio.</p>
+        </div>
+      </div>
+      <div class="ink-card is-collapsed" data-needs="fx">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Pauses (show or hide)"><span class="ink-card__label">Pauses</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+        <div class="tts-field">
+          <label class="ink-label" for="fxGapS">After a sentence</label>
+          <div class="ink-slider-row">
+            <input id="fxGapS" class="ink-range" type="range" min="0" max="1.5" step="0.02" value="0.12" data-fx="gapSentence" data-fmt="s">
+            <output class="ink-slider-val" for="fxGapS" data-fx-out="gapSentence">0.12</output>
+          </div>
+        </div>
+        <div class="tts-field">
+          <label class="ink-label" for="fxGapP">After a paragraph</label>
+          <div class="ink-slider-row">
+            <input id="fxGapP" class="ink-range" type="range" min="0" max="3" step="0.05" value="0.5" data-fx="gapPara" data-fmt="s">
+            <output class="ink-slider-val" for="fxGapP" data-fx-out="gapPara">0.5</output>
+          </div>
+        </div>
+        </div>
+      </div>
+      <div class="ink-card is-collapsed">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Pronunciation (show or hide)"><span class="ink-card__label">Pronunciation</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+        <textarea id="rules" class="ink-textarea tts-rules" spellcheck="false" aria-label="Pronunciation rules" placeholder="Siobhan = Shiv-awn&#10;GIF = jiff&#10;New York City = the big apple"></textarea>
+        <p class="tts-note">One rule per line: <code>word = how to say it</code>. Whole words only, upper or lower case. Applies to every sentence.</p>
+        <p id="rulesInfo" class="tts-note"></p>
+        </div>
+      </div>
+      <div class="ink-card is-collapsed">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Presets (show or hide)"><span class="ink-card__label">Presets</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+        <div class="tts-field">
+          <label class="ink-label" for="presetSel">Saved presets</label>
+          <select id="presetSel" class="ink-select"></select>
+        </div>
+        <div class="tts-field">
+          <label class="ink-label" for="presetName">Save current settings as</label>
+          <div class="tts-presetrow">
+            <input id="presetName" class="ink-input" type="text" maxlength="40" placeholder="Preset name" autocomplete="off">
+            <button id="presetSave" class="ink-btn" type="button">Save</button>
+          </div>
+        </div>
+        <div class="tts-presetrow tts-field">
+          <button id="presetDelete" class="ink-btn ink-btn--danger" type="button" disabled>Delete preset</button>
+          <button id="presetReset" class="ink-btn" type="button">Reset to defaults</button>
+        </div>
+        </div>
+      </div>
+      <div class="ink-card is-collapsed" data-needs="fx">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Performance (show or hide)"><span class="ink-card__label">Performance</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+          <div class="tts-field">
+            <label class="ink-label" for="workers">Sentences generated at once</label>
+            <select id="workers" class="ink-select">
+              <option value="auto" selected>Auto</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+          <p id="workersInfo" class="tts-note"></p>
+          <p class="tts-note">Each extra worker keeps its own copy of the model in memory and uses another processor core. More workers make long texts finish sooner. If the page feels slow while generating, choose 1.</p>
+        </div>
+      </div>
+      <div class="ink-card is-collapsed">
+        <div class="ink-card__header" role="button" tabindex="0" aria-label="Project (show or hide)"><span class="ink-card__label">Project</span><span class="ink-card__chevron">▾</span></div>
+        <div class="ink-card__body">
+          <div class="tts-btnrow tts-field">
+            <button id="projSave" class="ink-btn" type="button">Save project</button>
+            <button id="projOpen" class="ink-btn" type="button">Open project…</button>
+          </div>
+          <input id="projFile" type="file" accept=".json,application/json" hidden>
+          <p class="tts-note">A project file holds your text and settings, not audio. Sentences you already generated are found again automatically.</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <details class="tts-tech">
+    <summary>Technical details</summary>
+    <table class="tts-table">
+      <thead><tr><th>Engine</th><th class="num">Runtime</th><th class="num">Models</th><th class="num">Total</th><th>License</th></tr></thead>
+      <tbody id="foot"></tbody>
+    </table>
+    <p class="tts-note">Sizes are what the files weigh on disk. Saved audio: <span id="cacheInfo">…</span> <button id="cacheClear" class="tts-seg__link" type="button">Clear</button></p>
+  </details>
+</main>
+
+<section class="tts-about" aria-labelledby="aboutTitle">
+  <h2 id="aboutTitle">Free text to speech that stays on your computer</h2>
+  <p>Inknarrate reads your text aloud with natural voices that run inside your browser. Nothing you type is uploaded, there is no sign-up, and after your first visit it works offline. Add the voice models you like (Kitten TTS, Kokoro or Piper), pick English, Spanish or Arabic, and export the result as MP3 or WAV, with subtitles if you want them.</p>
+  <p>New here? Read the <a href="./guide/">guide</a>, or press <strong>Models</strong> and follow the quick start.</p>
+</section>
+
+<footer class="tts-footer">
+  Free software under <a href="./LICENSE">GPL-3.0-or-later</a> · <a href="./guide/">Guide</a> · <a class="tts-only-sm" href="https://inkplainer.pages.dev/" target="_blank" rel="noopener">Other free apps</a><span class="tts-only-sm"> · </span><a class="tts-only-sm" href="https://github.com/NadirWeb-App/Inknarrate-OS" target="_blank" rel="noopener">Open source</a><span class="tts-only-sm"> · </span><a href="./guide/#licences">Licences</a><!--web-links-->
+</footer>
+
+<div class="ink-modal" id="modelsModal" role="dialog" aria-modal="true" aria-labelledby="modelsTitle">
+  <div class="ink-modal__window tts-models-window">
+    <div class="ink-modal__header">
+      <div>
+        <h2 class="ink-modal__title" id="modelsTitle">Voice models</h2>
+        <div class="ink-modal__subtitle">Add a model once. It stays in this browser and works offline.</div>
+      </div>
+      <button class="ink-icon-btn" type="button" data-ink-close aria-label="Close">×</button>
+    </div>
+    <div class="ink-modal__body tts-models-body">
+      <p class="tts-manage"><button id="modelsTourBtn" class="tts-seg__link" type="button">Tutorial</button> · <a href="./guide/#models" target="_blank" rel="noopener">Help</a> · <a href="#modelsStorage" id="modelsManage">Manage or delete stored files ↓</a></p>
+      <div id="modelsQuick"></div>
+      <ol class="tts-howto">
+        <li><span class="tts-step">1</span><span>Download the files</span></li>
+        <li><span class="tts-step">2</span><span>Drop them in the box</span></li>
+        <li><span class="tts-step">3</span><span>Pick a voice</span></li>
+      </ol>
+      <div id="modelsDrop" class="tts-drop">
+        <span class="tts-drop__icon" id="modelsDropIcon" aria-hidden="true"></span>
+        <div class="tts-drop__text"><strong>Drop the downloaded files here</strong><span>You can add them all at once or one by one.</span></div>
+        <button id="modelsPick" class="ink-btn ink-btn--primary" type="button">Choose files…</button>
+        <input id="modelsFile" type="file" multiple hidden accept=".onnx,.json,.npz,.bin">
+      </div>
+      <ul id="modelsResults" class="tts-results" aria-live="polite"></ul>
+      <div id="modelsBody"></div>
+      <section id="modelsStorage" class="tts-store" aria-label="Stored in this browser"></section>
+      <p class="tts-note">This site hosts no models. Downloads come straight from huggingface.co to your browser, and the files you add stay in this browser; nothing is uploaded.</p>
+    </div>
+  </div>
+</div>
+
+<div class="ink-modal" id="ovrModal" role="dialog" aria-modal="true" aria-labelledby="ovrTitle">
+  <div class="ink-modal__window">
+    <div class="ink-modal__header">
+      <div>
+        <h2 class="ink-modal__title" id="ovrTitle">Sentence settings</h2>
+        <div class="ink-modal__subtitle tts-ovr-text" id="ovrText"></div>
+      </div>
+      <button class="ink-icon-btn" type="button" data-ink-close aria-label="Close">×</button>
+    </div>
+    <div class="ink-modal__body">
+      <div class="tts-field">
+        <label class="ink-label" for="ovrVoice">Voice</label>
+        <select id="ovrVoice" class="ink-select"></select>
+      </div>
+      <div class="tts-field">
+        <label class="ink-label" for="ovrSpeed">Speed <button class="tts-seg__link" type="button" data-ovr-reset="speed" hidden>use default</button></label>
+        <div class="ink-slider-row">
+          <input id="ovrSpeed" class="ink-range" type="range" min="0.6" max="1.6" step="0.05" value="1" data-ovr="speed">
+          <output class="ink-slider-val tts-ovr-out" data-ovr-out="speed"></output>
+        </div>
+      </div>
+      <div class="tts-field">
+        <label class="ink-label" for="ovrPitch">Pitch <button class="tts-seg__link" type="button" data-ovr-reset="pitch" hidden>use default</button></label>
+        <div class="ink-slider-row">
+          <input id="ovrPitch" class="ink-range" type="range" min="-3" max="3" step="0.5" value="0" data-ovr="pitch">
+          <output class="ink-slider-val tts-ovr-out" data-ovr-out="pitch"></output>
+        </div>
+      </div>
+      <div class="tts-field">
+        <label class="ink-label" for="ovrPause">Pause after this sentence <button class="tts-seg__link" type="button" data-ovr-reset="pause" hidden>use default</button></label>
+        <div class="ink-slider-row">
+          <input id="ovrPause" class="ink-range" type="range" min="0" max="3" step="0.05" value="0.12" data-ovr="pause">
+          <output class="ink-slider-val tts-ovr-out" data-ovr-out="pause"></output>
+        </div>
+      </div>
+      <p class="tts-note">Anything you leave on “default” follows the main settings. Changing voice, speed or pitch generates this sentence again; the pause applies instantly. The blend and sound settings stay global.</p>
+    </div>
+    <div class="ink-modal__footer tts-ovr-footer">
+      <button id="ovrSave" class="ink-btn ink-btn--cta" type="button">Save</button>
+      <button id="ovrAll" class="ink-btn" type="button" title="Give every sentence these settings">Save for all</button>
+      <button id="ovrClear" class="ink-btn ink-btn--danger" type="button">Back to default</button>
+    </div>
+  </div>
+</div>
+
+<div id="player" class="tts-player" role="region" aria-label="Player" hidden>
+  <div class="tts-player__inner">
+    <div class="tts-player__btns">
+      <button id="pPrev" class="ink-icon-btn" type="button" aria-label="Previous sentence" title="Previous sentence" disabled></button>
+      <button id="pPlay" class="tts-play" type="button" aria-label="Play" title="Play / pause (Space)"></button>
+      <button id="pNext" class="ink-icon-btn" type="button" aria-label="Next sentence" title="Next sentence" disabled></button>
+    </div>
+    <span id="pTime" class="tts-time" aria-hidden="true">0:00</span>
+    <div id="pSeek" class="tts-seek" role="slider" tabindex="0" aria-label="Position" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><canvas id="pCanvas"></canvas></div>
+    <span id="pTotal" class="tts-time" aria-hidden="true">0:00</span>
+    <div class="tts-vol">
+      <button id="pMute" class="ink-icon-btn" type="button" aria-label="Mute"></button>
+      <input id="pVol" class="ink-range" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+    </div>
+  </div>
+</div>
+
+<script src="./ui/inkplainer-ui.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

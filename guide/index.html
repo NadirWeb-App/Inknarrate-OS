@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inknarrate Guide: how to use free offline text to speech</title>
+<meta name="description" content="How to set up and use Inknarrate: add Kitten, Kokoro or Piper voices (English, Spanish, Arabic), generate speech in your browser, export MP3 or WAV, and keep everything private and offline.">
+<meta name="theme-color" content="#d8d8d8">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="stylesheet" href="../ui/fonts.css">
+<link rel="stylesheet" href="../ui/inkplainer-ui.css">
+<link rel="stylesheet" href="../ui/tts.css">
+</head>
+<body class="ink-root tts-page">
+
+<header class="ink-topbar">
+  <a class="ink-logo tts-logo-link" href="../" aria-label="Inknarrate, back to the app">
+    <span class="ink-logo__icon" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 10v4M7.5 6v12M12 8.5v7M16.5 4v16M21 10v4"/></svg>
+    </span>
+    <span class="ink-logo__word">Inknarrate</span>
+  </a>
+  <span class="tts-topbar-sub">Guide</span>
+  <div class="ink-topbar__right"><a class="ink-btn ink-btn--primary" href="../">Open the app</a></div>
+</header>
+
+<main class="tts-doc">
+  <nav class="tts-toc" aria-label="On this page">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#quick-start">Quick start</a></li>
+      <li><a href="#models">Choosing and adding a voice model</a></li>
+      <li><a href="#spanish-arabic">Spanish and Arabic</a></li>
+      <li><a href="#writing">Writing and generating speech</a></li>
+      <li><a href="#settings">Changing the voice</a></li>
+      <li><a href="#export">Exporting and projects</a></li>
+      <li><a href="#storage">Stored files and deleting them</a></li>
+      <li><a href="#privacy">Privacy and offline use</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#faq">Questions</a></li>
+      <li><a href="#technical">Technical notes</a></li>
+      <li><a href="#licences">Licences</a></li>
+    </ol>
+  </nav>
+
+  <article>
+    <h1>Inknarrate guide</h1>
+    <p class="tts-lead">Inknarrate turns text into speech inside your browser. Nothing you type is sent anywhere, and after your first visit it works offline. This guide covers setup, everyday use, and fixes for common problems.</p>
+
+    <h2 id="quick-start">Quick start</h2>
+    <ol>
+      <li>Open <a href="../">the app</a> and press <strong>Speak</strong>. You hear your browser's own voice straight away. It is the default and the fallback, but its audio can't be saved or exported.</li>
+      <li>For natural voices that you can also export, press <strong>Models</strong> (top right). If you're unsure, start with <strong>Kokoro</strong>: the <em>New here?</em> box at the top points you to its files. Press the <strong>Download</strong> button next to each of the three files (about 93 MB in all), then drop them into the box.</li>
+      <li>Drop the downloaded files into the box at the top of the Models window. When a card says <strong>Ready</strong>, the app switches to that engine.</li>
+      <li>Press <strong>Tutorial</strong> in the top bar for a one-minute tour (it also shows once on your first visit).</li>
+      <li>Type or paste text, press <strong>Speak</strong>, then press <strong>Download WAV</strong>. The format (WAV or MP3), subtitles and the per-sentence zip are right under it.</li>
+    </ol>
+
+    <h2 id="models">Choosing and adding a voice model</h2>
+    <p>Inknarrate does not host any voice files. The Models window links to the files on Hugging Face (a public site for AI models); you download them in your own browser and add them to the app. They are then kept in this browser's own storage and never uploaded.</p>
+    <div class="tts-tablewrap"><table class="tts-table tts-table--doc">
+      <thead><tr><th>Model</th><th>Languages</th><th>Size</th><th>Good for</th><th>Files</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Kitten TTS</strong> (nano)</td><td>English, 8 voices</td><td>about 28 MB</td><td>Small and fast, fine on weak computers.</td><td><code>config.json</code>, <code>kitten_tts_nano_v0_8.onnx</code>, <code>voices.npz</code></td></tr>
+        <tr><td><strong>Kokoro</strong></td><td>English (US and UK)</td><td>92 MB + about 0.5 MB per voice</td><td>The most natural English; you choose the voices.</td><td><code>model_quantized.onnx</code> (or <code>model.onnx</code>, 326 MB), <code>tokenizer.json</code>, voices like <code>af_heart.bin</code></td></tr>
+        <tr><td><strong>Piper</strong></td><td>English, Spanish, Arabic</td><td>15 to 110 MB per voice</td><td>Many voices in three languages; add as many as you like.</td><td>Per voice: <code>name.onnx</code> and <code>name.onnx.json</code></td></tr>
+      </tbody>
+    </table></div>
+    <h3>Kokoro</h3>
+    <p>Pick one model file: <code>model_quantized.onnx</code> is the one to start with, and <code>model.onnx</code> is better but slower and heavier. Adding the other later replaces the first. Voices must start with <code>af_</code> or <code>am_</code> (US) or <code>bf_</code> or <code>bm_</code> (UK). Good ones to begin with are Heart, Bella, Emma, Michael and George.</p>
+    <h3>Kitten TTS</h3>
+    <p>Only the "nano" size is supported. Download the three files from the Kitten card and drop them in together.</p>
+    <h3>Piper</h3>
+    <p>Every Piper voice is two files with the same base name, for example <code>en_US-ljspeech-medium.onnx</code> and <code>en_US-ljspeech-medium.onnx.json</code>. Download both. A voice appears in the Voice list once both are added. Some voices contain many speakers; each speaker is listed. You can also use any other English, Spanish or Arabic voice from the Piper voices folder on Hugging Face (open a language folder, then a voice, then a quality: "medium" is a good balance). Each voice has its own licence, so read its <em>MODEL_CARD</em> file before using the audio commercially.</p>
+    <p>The small <code>config.json</code> and <code>tokenizer.json</code> files are saved for you by their Download buttons. If that doesn't work, a tab opens: press Ctrl+S (Cmd+S on a Mac) and save the file under that exact name.</p>
+
+    <h2 id="spanish-arabic">Spanish and Arabic</h2>
+    <p><strong>Kitten TTS and Kokoro speak English only.</strong> They cannot read Arabic, and Spanish text would be read with English rules. If you give them text that is mostly Arabic or another non-Latin script, the app stops and tells you instead of producing nonsense. For Spanish and Arabic, use Piper (or the browser voice).</p>
+    <p>Spanish and Arabic use Piper voices. The first time you add one, the app downloads extra language data once (about 18 MB, plus 13 MB more for Arabic) and keeps it for offline use. English-only users never download it.</p>
+    <h3 id="arabic">Arabic: write the vowel marks (التشكيل) for the best result</h3>
+    <p>Arabic is normally written without its short vowels, and a voice cannot always guess them. Inknarrate adds the vowel marks automatically before speaking, which sounds good but is not perfect. <strong>For the best Arabic, type your text with its vowel marks (التشكيل).</strong> Text that already has them is spoken exactly as written. The text box and the sentence list follow the direction of the text, so Arabic reads right to left.</p>
+    <p>Sentences are split at full stops. Arabic question marks (؟), commas (،) and semicolons (؛) are understood as pauses and as question intonation, but they don't start a new sentence; use the <em>Split at cursor</em> button if you want a break.</p>
+    <p>The Arabic voice suggested in the Models window (Kareem) has no clearly stated licence for its recordings; the app says so next to it. Check before using its audio commercially.</p>
+
+    <h2 id="writing">Writing and generating speech</h2>
+    <ul>
+      <li><strong>Sentences:</strong> the text is split into sentences, shown in a list under the box. Only a full stop followed by a space ends a sentence automatically (abbreviations like "Dr." and decimals don't split). A blank line adds a longer pause. You can turn either option off, <em>Split at cursor</em>, and <em>Merge with next</em>.</li>
+      <li><strong>Speak</strong> (Ctrl+Enter) plays from the top and generates what's missing as it goes; <strong>Stop</strong> (Esc) stops; <strong>Space</strong> pauses and resumes. <strong>Generate all</strong> makes every sentence without playing.</li>
+      <li>Every sentence is generated <strong>once and kept</strong>. Edit a sentence and only that one is generated again. Reloading the page keeps what you made.</li>
+      <li><strong>Importing text:</strong> press Import or drop a file onto the text box. Supported: .txt, .md, .srt, .vtt, .html, .epub and .docx (up to 50 MB).</li>
+      <li><strong>Player:</strong> the bar at the bottom has play, previous and next sentence, a seek bar (solid parts are generated), time and volume.</li>
+    </ul>
+
+    <h2 id="settings">Changing the voice</h2>
+    <ul>
+      <li><strong>Voice, speed and pitch:</strong> speed is remembered separately for each engine (Kitten starts at 1.6×, which sounds natural; the others at 1×). Pitch is about ±3 semitones; small changes sound best.</li>
+      <li><strong>Blend</strong> (Kitten and Kokoro only, experimental) mixes two voices. Piper has no blend.</li>
+      <li><strong>Sound:</strong> volume boost, bass, treble, even out loudness, trim silence. <strong>Pauses:</strong> after a sentence and after a paragraph. These apply instantly and regenerate nothing.</li>
+      <li><strong>Pronunciation:</strong> one rule per line, like <code>Siobhan = Shiv-awn</code>.</li>
+      <li><strong>Presets</strong> save a voice and its settings under a name.</li>
+      <li><strong>Retake</strong> (circular arrow on a sentence) generates it again with slightly different delivery. <strong>Settings for one sentence</strong> (sliders icon) gives a sentence its own voice, speed, pitch and pause.</li>
+    </ul>
+
+    <h2 id="export">Exporting and projects</h2>
+    <ul>
+      <li><strong>Recording:</strong> all generated sentences joined, as WAV (lossless) or MP3 (64 to 160 kbps).</li>
+      <li><strong>Zip per sentence:</strong> one numbered audio file per sentence, plus a text list and subtitles.</li>
+      <li><strong>Subtitles:</strong> SRT or VTT, timed to match the recording.</li>
+      <li><strong>Projects:</strong> <em>Save project</em> writes a small file with your text and settings (no audio). <em>Open project</em> restores it, and sentences you generated before are found again.</li>
+    </ul>
+
+    <h2 id="storage">Stored files and deleting them</h2>
+    <p>The <strong>Stored in this browser</strong> box at the bottom of the Models window lists every model file you added, with its size and a Delete button. <strong>Delete all model files</strong> removes them all and <strong>Clear audio</strong> removes the sentences you generated. Your text and settings are never touched, so you never need to clear your whole browser data. Clearing a site's data in your browser settings also removes your models; a different browser or device needs its own copy.</p>
+
+    <h2 id="privacy">Privacy and offline use</h2>
+    <p>Your text, your audio and your model files stay in your browser. The app contacts another site only when you press Download on <code>config.json</code> or <code>tokenizer.json</code> (it fetches that tiny file from Hugging Face), and when your browser downloads the model files you chose. After your first visit it works offline: add your models before going offline.</p>
+    <p>Inknarrate needs a recent browser: Chrome, Edge or Brave 102 or newer, Firefox 115 or newer, or Safari 16.4 or newer.</p>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <dl>
+      <dt>"Not set up yet", or Speak is disabled</dt><dd>Open Models and add the missing files; the card lists what is missing.</dd>
+      <dt>A file is refused</dt><dd>Read the message. Common causes: a web page saved instead of the file, a voice for an unsupported language, a different Kitten size, or a <code>config.json</code> from the wrong model. Use the Download buttons and check the file size.</dd>
+      <dt>“A requested file or directory could not be found” when a model loads</dt><dd>The browser lost track of a stored file (it can happen after adding files one at a time, or when the disk is nearly full). Reload the page. If it comes back, open Models, remove that file under “Stored in this browser”, and add it again. The app now checks every file right after saving it, so this should be rare.</dd>
+      <dt>A model I added disappeared</dt><dd>Your browser cleared its storage, or you are in a private window or a different browser. Add the files again.</dd>
+      <dt>Slow, or the page lags while generating</dt><dd>Set Performance, sentences generated at once, to 1; use Kitten, or Kokoro's smaller model; or a smaller Piper voice.</dd>
+      <dt>Different sound each time I regenerate</dt><dd>Normal. The models add a little randomness; the words and length stay the same.</dd>
+      <dt>No browser voices listed</dt><dd>Your system has no voices installed or they are still loading.</dd>
+      <dt>A Spanish or Arabic voice won't load</dt><dd>It needs the extra language data. Connect to the internet once with that voice added, then try again.</dd>
+    </dl>
+
+    <h2 id="faq">Questions</h2>
+    <h3>Is it really free and private?</h3>
+    <p>Yes. It is free, open source software, and your text, audio and model files never leave your browser.</p>
+    <h3>Does it work offline?</h3>
+    <p>Yes, once the app has loaded once and you have added your models.</p>
+    <h3>Which languages are supported?</h3>
+    <p>English with Kitten, Kokoro and Piper; Spanish and Arabic with Piper. The browser voice covers whatever your device has installed.</p>
+    <h3>Can I use the audio commercially?</h3>
+    <p>That depends on the voice model, not on Inknarrate. Each model has its own licence; read the model page before commercial use.</p>
+
+    <h2 id="technical">Technical notes</h2>
+    <p>For the curious. The “Technical details” line at the bottom of the app lists each engine’s runtime size, model size and licence. Sizes are what the files weigh on disk; the host compresses text and WebAssembly files in transit, so the real download is smaller. Everything runs in your browser with ONNX Runtime (WebAssembly) in background workers; the page is served with cross-origin isolation headers so that threads can be used. Language data for Spanish and Arabic is only fetched when you add such a voice. After the first visit the app files are kept by a service worker, which is why it works offline.</p>
+
+    <h2 id="licences">Licences</h2>
+    <p>Inknarrate is free software under the <a href="../LICENSE">GNU GPL v3 or later</a>. <a href="https://github.com/NadirWeb-App/Inknarrate-OS">The source code is here</a>. It bundles eSpeak NG (GPL), onnxruntime-web (MIT), JSZip, an MP3 encoder (LGPL), the Kitten TTS JavaScript port (Apache-2.0), and fonts under the SIL Open Font Licence. Full texts and credits are in the <a href="../NOTICE.md">notices file</a> and the <a href="../licenses/">licenses folder</a>.</p>
+    <p>The voice models are separate works, not part of Inknarrate, and are not hosted here. Kitten TTS and Kokoro are Apache-2.0. Piper voices have a licence each (see each voice's model card); the voice <em>Sharvard</em> uses speech data under CC BY 3.0 (credit: University of Edinburgh). Voices you add yourself are your responsibility.</p>
+    <p>Found a problem? <a href="https://github.com/NadirWeb-App/Inknarrate-OS/issues">Report it here</a>.</p>
+  </article>
+</main>
+
+<footer class="tts-footer">
+  <a href="../">App</a> · <a href="./">Guide</a> · <a href="https://github.com/NadirWeb-App/Inknarrate-OS">Open source</a> · <a href="https://inkplainer.pages.dev">Other free apps</a> · <a href="../#licences">Licences</a><!--web-links-->
+</footer>
+</body>
+</html>

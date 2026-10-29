@@ -1,0 +1,5 @@
+/* Self-hosted fonts (SIL Open Font License 1.1, see OFL-*.txt), so the app needs no network. Latin subset only. */
+@font-face { font-family: 'Geist'; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url('./fonts/geist-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Caveat'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('./fonts/caveat-latin-700-normal.woff2') format('woff2'); }
