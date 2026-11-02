@@ -8,7 +8,7 @@
 // once generation begins, and a sentence goes to the least busy worker that is ready.
 import { WorkerHost } from './remote.js';
 
-export const MAX_WORKERS = 4;
+export const MAX_WORKERS = 8;
 export const RESTART_MESSAGE = 'Restarting the audio workers.';
 
 /** How many workers "Auto" means: one per core, at most 3 (each holds its own copy of the model in memory),
@@ -54,7 +54,7 @@ export class WorkerPool {
   _load(slot, engine, progress) {
     if (!slot.loading) {
       slot.loading = slot.host.call('load', { engine, threads: this.threads() }, progress).then(() => { slot.loaded = true; });
-      slot.loading.catch(() => { slot.loading = null; });
+      slot.loading.catch((err) => { slot.loading = null; slot.failedAt = Date.now(); console.warn('An audio worker failed to load; it will be tried again.', err && err.message); });
     }
     return slot.loading;
   }
@@ -64,11 +64,16 @@ export class WorkerPool {
     return this._load(this._slot(0), engine, progress);
   }
 
-  /** Start loading the other workers in the background (once, when generation begins). */
+  /** Start loading the other workers in the background. Called on every sentence, so a worker that failed to
+   *  load (for example when memory ran short) is tried again, at most every 5 seconds, instead of staying missing. */
   _expand(engine) {
-    if (this.expanded) return;
     this.expanded = true;
-    for (let i = 1; i < this.size; i++) this._load(this._slot(i), engine, () => {}).catch(() => {});
+    const now = Date.now();
+    for (let i = 1; i < this.size; i++) {
+      const slot = this._slot(i);
+      if (slot.loaded || slot.loading || (slot.failedAt && now - slot.failedAt < 5000)) continue;
+      this._load(slot, engine, () => {}).catch(() => {});
+    }
   }
 
   async synth(engine, text, opts) {

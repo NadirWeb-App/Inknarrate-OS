@@ -84,6 +84,7 @@ export class Transport {
   /** Start playing `items` from sentence `index`, `offset` seconds in. Call from a user gesture. */
   async play(items, index = 0, offset = 0) {
     const token = ++this.token;
+    this.wantPaused = false;
     this._stopSources();
     clearInterval(this.timer);
     this.items = items;
@@ -171,22 +172,28 @@ export class Transport {
     }
   }
 
+  // Pause and resume change the state at once and remember what the person last asked for. The browser's
+  // suspend()/resume() calls take a moment; waiting for them used to swallow a click that came in meanwhile.
   pause() {
     if (this.state !== 'playing' && this.state !== 'waiting') return;
-    this.ctx.suspend();
+    this.wantPaused = true;
     this._setState('paused');
+    this.ctx.suspend().catch(() => {});
   }
 
   async resume() {
     if (this.state !== 'paused') return;
-    await this.ctx.resume();
+    this.wantPaused = false;
     this._setState('playing');
+    await this.ctx.resume().catch(() => {});
+    if (this.wantPaused && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});   // paused again while it was resuming
   }
 
   toggle() { return this.state === 'paused' ? this.resume() : this.pause(); }
 
   stop() {
     this.token++;
+    this.wantPaused = false;
     this._stopSources();
     clearInterval(this.timer);
     this.loading = false;

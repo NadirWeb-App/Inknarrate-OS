@@ -874,7 +874,7 @@ function initImport() {
 
 // ---- generation workers ---------------------------------------------------------
 
-/** "Auto" or 1..4 from the select -> how many workers the engines should use. */
+/** "Auto" or 1..8 from the select -> how many workers the engines should use. */
 function wantedWorkers() {
   const v = $('workers').value;
   return v === 'auto' ? autoWorkers() : Math.max(1, Math.min(MAX_WORKERS, parseInt(v, 10) || 1));

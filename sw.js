@@ -2,7 +2,7 @@
 // Everything same-origin that loads successfully is stored. (Model files are not here: they live in IndexedDB, see engines/model-store.js.)
 // Bump VERSION whenever files are removed or renamed, and whenever anything under vendor/ or ui/fonts/ changes (those are
 // served cache-first): old caches are deleted on activation.
-const VERSION = 'inknarrate-v32';
+const VERSION = 'inknarrate-v34';
 const CORE = [
   './', 'index.html', 'guide/', 'manifest.webmanifest', 'icon-192.png', 'app.js',
   'engines/text.js', 'engines/script-check.js', 'engines/tour.js', 'engines/segments.js', 'engines/audio-store.js', 'engines/segment-list.js', 'engines/transport.js', 'engines/player-bar.js', 'engines/registry.js', 'engines/meta.js', 'engines/remote.js', 'engines/worker.js',
