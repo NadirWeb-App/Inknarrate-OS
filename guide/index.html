@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inknarrate Guide: how to use free offline text to speech</title>
-<meta name="description" content="How to set up and use Inknarrate: add Kitten, Kokoro or Piper voices (English, Spanish, Arabic), generate speech in your browser, export MP3 or WAV, and keep everything private and offline.">
+<meta name="description" content="How to set up and use Inknarrate: add Kitten, Kokoro, Paradee or Piper voices (English, Spanish, Arabic), generate speech in your browser, export MP3 or WAV, and keep everything private and offline.">
 <meta name="theme-color" content="#d8d8d8">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -65,11 +65,14 @@
       <tbody>
         <tr><td><strong>Kitten TTS</strong> (nano)</td><td>English, 8 voices</td><td>about 28 MB</td><td>Small and fast, fine on weak computers.</td><td><code>config.json</code>, <code>kitten_tts_nano_v0_8.onnx</code>, <code>voices.npz</code></td></tr>
         <tr><td><strong>Kokoro</strong></td><td>English (US and UK)</td><td>92 MB + about 0.5 MB per voice</td><td>The most natural English; you choose the voices.</td><td><code>model_quantized.onnx</code> (or <code>model.onnx</code>, 326 MB), <code>tokenizer.json</code>, voices like <code>af_heart.bin</code></td></tr>
+        <tr><td><strong>Paradee</strong></td><td>English (US and UK), 4 voices</td><td>about 8.5 MB</td><td>A tiny Kokoro: quick on any computer, a little less natural.</td><td><code>paradee_int8.onnx</code> (or <code>paradee.onnx</code>, 35 MB), <code>config.json</code></td></tr>
         <tr><td><strong>Piper</strong></td><td>English, Spanish, Arabic</td><td>15 to 110 MB per voice</td><td>Many voices in three languages; add as many as you like.</td><td>Per voice: <code>name.onnx</code> and <code>name.onnx.json</code></td></tr>
       </tbody>
     </table></div>
     <h3>Kokoro</h3>
     <p>Pick one model file: <code>model_quantized.onnx</code> is the one to start with, and <code>model.onnx</code> is better but slower and heavier. Adding the other later replaces the first. Voices must start with <code>af_</code> or <code>am_</code> (US) or <code>bf_</code> or <code>bm_</code> (UK). Good ones to begin with are Heart, Bella, Emma, Michael and George.</p>
+    <h3>Paradee</h3>
+    <p>A small model trained to sound like Kokoro. Its four voices (Heart, Puck, Isabella and Fable) are inside the model, so there is nothing else to add: download <code>paradee_int8.onnx</code> and <code>config.json</code> from the Paradee card and drop them in together. Only version 1.2 is supported. Paradee has no voice blend and no retakes.</p>
     <h3>Kitten TTS</h3>
     <p>Only the "nano" size is supported. Download the three files from the Kitten card and drop them in together.</p>
     <h3>Piper</h3>
@@ -77,7 +80,7 @@
     <p>The small <code>config.json</code> and <code>tokenizer.json</code> files are saved for you by their Download buttons. If that doesn't work, a tab opens: press Ctrl+S (Cmd+S on a Mac) and save the file under that exact name.</p>
 
     <h2 id="spanish-arabic">Spanish and Arabic</h2>
-    <p><strong>Kitten TTS and Kokoro speak English only.</strong> They cannot read Arabic, and Spanish text would be read with English rules. If you give them text that is mostly Arabic or another non-Latin script, the app stops and tells you instead of producing nonsense. For Spanish and Arabic, use Piper (or the browser voice).</p>
+    <p><strong>Kitten TTS, Kokoro and Paradee speak English only.</strong> They cannot read Arabic, and Spanish text would be read with English rules. If you give them text that is mostly Arabic or another non-Latin script, the app stops and tells you instead of producing nonsense. For Spanish and Arabic, use Piper (or the browser voice).</p>
     <p>Spanish and Arabic use Piper voices. The first time you add one, the app downloads extra language data once (about 18 MB, plus 13 MB more for Arabic) and keeps it for offline use. English-only users never download it.</p>
     <h3 id="arabic">Arabic: write the vowel marks (التشكيل) for the best result</h3>
     <p>Arabic is normally written without its short vowels, and a voice cannot always guess them. Inknarrate adds the vowel marks automatically before speaking, which sounds good but is not perfect. <strong>For the best Arabic, type your text with its vowel marks (التشكيل).</strong> Text that already has them is spoken exactly as written. The text box and the sentence list follow the direction of the text, so Arabic reads right to left.</p>
@@ -96,7 +99,7 @@
     <h2 id="settings">Changing the voice</h2>
     <ul>
       <li><strong>Voice, speed and pitch:</strong> speed is remembered separately for each engine (Kitten starts at 1.6×, which sounds natural; the others at 1×). Pitch is about ±3 semitones; small changes sound best.</li>
-      <li><strong>Blend</strong> (Kitten and Kokoro only, experimental) mixes two voices. Piper has no blend.</li>
+      <li><strong>Blend</strong> (Kitten and Kokoro only, experimental) mixes two voices. Paradee and Piper have no blend.</li>
       <li><strong>Sound:</strong> volume boost, bass, treble, even out loudness, trim silence. <strong>Pauses:</strong> after a sentence and after a paragraph. These apply instantly and regenerate nothing.</li>
       <li><strong>Pronunciation:</strong> one rule per line, like <code>Siobhan = Shiv-awn</code>.</li>
       <li><strong>Presets</strong> save a voice and its settings under a name.</li>
@@ -136,7 +139,7 @@
     <h3>Does it work offline?</h3>
     <p>Yes, once the app has loaded once and you have added your models.</p>
     <h3>Which languages are supported?</h3>
-    <p>English with Kitten, Kokoro and Piper; Spanish and Arabic with Piper. The browser voice covers whatever your device has installed.</p>
+    <p>English with Kitten, Kokoro, Paradee and Piper; Spanish and Arabic with Piper. The browser voice covers whatever your device has installed.</p>
     <h3>Can I use the audio commercially?</h3>
     <p>That depends on the voice model, not on Inknarrate. Each model has its own licence; read the model page before commercial use.</p>
 
@@ -145,7 +148,7 @@
 
     <h2 id="licences">Licences</h2>
     <p>Inknarrate is free software under the <a href="../LICENSE">GNU GPL v3 or later</a>. <a href="https://github.com/NadirWeb-App/Inknarrate-OS">The source code is here</a>. It bundles eSpeak NG (GPL), onnxruntime-web (MIT), JSZip, an MP3 encoder (LGPL), the Kitten TTS JavaScript port (Apache-2.0), and fonts under the SIL Open Font Licence. Full texts and credits are in the <a href="../NOTICE.md">notices file</a> and the <a href="../licenses/">licenses folder</a>.</p>
-    <p>The voice models are separate works, not part of Inknarrate, and are not hosted here. Kitten TTS and Kokoro are Apache-2.0. Piper voices have a licence each (see each voice's model card); the voice <em>Sharvard</em> uses speech data under CC BY 3.0 (credit: University of Edinburgh). Voices you add yourself are your responsibility.</p>
+    <p>The voice models are separate works, not part of Inknarrate, and are not hosted here. Kitten TTS, Kokoro and Paradee are Apache-2.0. Piper voices have a licence each (see each voice's model card); the voice <em>Sharvard</em> uses speech data under CC BY 3.0 (credit: University of Edinburgh). Voices you add yourself are your responsibility.</p>
     <p>Found a problem? <a href="https://github.com/NadirWeb-App/Inknarrate-OS/issues">Report it here</a>.</p>
   </article>
 </main>

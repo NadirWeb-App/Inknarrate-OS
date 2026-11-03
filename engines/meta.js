@@ -31,6 +31,20 @@ export const KOKORO_META = {
   caps: CAPS,
 };
 
+// Paradee 1.2 has its four voices built into the model (one learned vector each, picked by index), so
+// there are no style vectors to blend or step through: no mix and no takes.
+export const PARADEE_META = {
+  id: 'paradee',
+  label: 'Paradee',
+  normalize: false, // same text cleaning as Kokoro (kokoro-text.js)
+  voices: [
+    ['af_heart', 'Heart (US female)'], ['am_puck', 'Puck (US male)'],
+    ['bf_isabella', 'Isabella (UK female)'], ['bm_fable', 'Fable (UK male)'],
+  ].map(([id, label]) => ({ id, label })),
+  supportsSpeed: () => true,
+  caps: { pitch: true, mix: false, take: false, fx: true, override: true },
+};
+
 export const PIPER_META = {
   id: 'piper',
   label: 'Piper',

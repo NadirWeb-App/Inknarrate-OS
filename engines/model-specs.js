@@ -35,6 +35,10 @@ export const KOKORO_VOICES = [
 /** A short starter set for the guide (the better-graded voices, both accents, both genders). */
 export const KOKORO_STARTER = ['af_heart', 'af_bella', 'bf_emma', 'am_michael', 'bm_george'];
 
+// ---- Paradee 8M v1.2 (distilled from Kokoro by Sahil Mahendrakar) --------------------------------
+// Only 1.2: 1.0 and 1.1 have one voice and no voice input.
+const PARADEE_REPO = `${HF}/sahilmahendrakar/Paradee-8M-v1.2`;
+
 // ---- Piper (rhasspy/piper-voices) ---------------------------------------------------------------
 // Unlike Kokoro, every Piper voice is a complete model of its own: an .onnx file plus an .onnx.json file that
 // describes it. Licences differ per voice (each folder has a MODEL_CARD), so only voices whose card was read
@@ -109,6 +113,20 @@ export const SPECS = {
     voiceHref: (id) => dl(KOKORO_REPO, `voices/${id}.bin`),
     voicesPageUrl: `${KOKORO_REPO}/tree/main/voices`,
   },
+  paradee: {
+    id: 'paradee',
+    label: 'Paradee',
+    summary: 'A tiny Kokoro: 4 English voices (US and UK) in one 8.5 MB model. Quick on any computer.',
+    author: 'Sahil Mahendrakar (distilled from Kokoro by hexgrad)',
+    license: 'Apache-2.0',
+    pageUrl: PARADEE_REPO,
+    // Two variants; adding one replaces the other. Hashes are the SHA-256 Hugging Face lists for each file (the config's was computed from the download).
+    models: [
+      { name: 'paradee_int8.onnx', variant: 'int8', size: 8462119, sha256: 'a6989796692ac173597e15d405c971989202d5c73cfad65f22e90bd7b6c97da1', href: dl(PARADEE_REPO, 'onnx/paradee_int8.onnx'), note: 'Recommended. 8-bit, what its author ships.' },
+      { name: 'paradee.onnx', variant: 'fp32', size: 34779443, sha256: '8bac7b0bebef403cb22b54ead6bee423fa34a04fd91f73326b7f65cd9d0d25b9', href: dl(PARADEE_REPO, 'onnx/paradee.onnx'), note: 'Full precision. Larger, slightly slower.' },
+    ],
+    config: { key: 'config.json', name: 'config.json', size: 1827, sha256: '002535cf8dd08a434cdddb13372da8a7b4844152bdf9b5b4e7342e12ec30bcfb', href: plain(PARADEE_REPO, 'config.json'), alt: raw(PARADEE_REPO, 'config.json'), text: true },
+  },
   piper: {
     id: 'piper',
     label: 'Piper',
@@ -142,12 +160,14 @@ function piperIdentify(base, role, name) {
 /**
  * Which model does this file belong to, and what is it for?
  * Returns { engine, key, role, ... } or { error } (a sentence for the person), or null for something we have no opinion on.
- * `config.json` can only be told apart by its content: see validateFile.
+ * `config.json` (Kitten's or Paradee's) can only be told apart by its content: see validateFile.
  */
 export function identify(rawName) {
   const name = cleanName(rawName);
   const lower = name.toLowerCase();
   if (lower === 'config.json') return { engine: 'kitten', key: 'config.json', role: 'config', name };
+  const pm = SPECS.paradee.models.find((m) => m.name === lower);
+  if (pm) return { engine: 'paradee', key: 'model.onnx', role: 'model', name: lower, variant: pm.variant };
   if (lower === 'kitten_tts_nano_v0_8.onnx') return { engine: 'kitten', key: 'model.onnx', role: 'model', name: lower };
   if (lower === 'voices.npz') return { engine: 'kitten', key: 'voices.npz', role: 'voices', name: lower };
   if (lower === 'tokenizer.json') return { engine: 'kokoro', key: 'tokenizer.json', role: 'tokenizer', name: lower };
@@ -163,7 +183,7 @@ export function identify(rawName) {
   if (lower.endsWith('.onnx') && PIPER_BASE_RE.test(name.slice(0, -5))) return piperIdentify(name.slice(0, -5), 'piper-model', name);
   if (/^kitten_tts_.*\.onnx$/.test(lower)) return { error: `${name} is a different Kitten size. This app supports kitten_tts_nano_v0_8.onnx (the nano int8 model).` };
   if (lower.endsWith('.onnx')) {
-    return { error: `${name} isn’t one of the supported model files. For Kokoro use model_quantized.onnx (recommended) or model.onnx from the onnx folder. A Piper voice is named like en_US-amy-medium.onnx.` };
+    return { error: `${name} isn’t one of the supported model files. For Kokoro use model_quantized.onnx (recommended) or model.onnx from the onnx folder; for Paradee, paradee_int8.onnx or paradee.onnx. A Piper voice is named like en_US-amy-medium.onnx.` };
   }
   return null;
 }
@@ -180,7 +200,7 @@ export function validateKittenConfig(text) {
   let cfg;
   try { cfg = JSON.parse(text); } catch { return { ok: false, error: 'config.json isn’t valid JSON.' }; }
   if (!cfg || typeof cfg !== 'object' || typeof cfg.model_file !== 'string') {
-    return { ok: false, error: 'This config.json isn’t Kitten’s (it has no model_file). If it is Kokoro’s, you don’t need it: Kokoro uses tokenizer.json.' };
+    return { ok: false, error: 'This config.json isn’t Kitten’s or Paradee’s. If it is Kokoro’s, you don’t need it: Kokoro uses tokenizer.json.' };
   }
   if (cfg.model_file !== 'kitten_tts_nano_v0_8.onnx') {
     return { ok: false, error: `This config.json is for ${cfg.model_file}. This app supports kitten_tts_nano_v0_8.onnx (the nano int8 model).` };
@@ -206,6 +226,32 @@ export function parseTokenizer(text) {
     return { ok: false, error: 'This tokenizer.json doesn’t look like Kokoro’s.' };
   }
   return { ok: true, vocab };
+}
+
+/**
+ * Paradee's config.json: { model_type: 'paradee', version, sample_rate, voices: [id], vocab: { char: id } }.
+ * Returns { ok, vocab: Map<char, id>, voices: [id] } or { ok: false, error }. The vocabulary is Kokoro's.
+ */
+export function parseParadeeConfig(text) {
+  let c;
+  try { c = JSON.parse(text); } catch { return { ok: false, error: 'config.json isn’t valid JSON.' }; }
+  if (!c || typeof c !== 'object' || c.model_type !== 'paradee') return { ok: false, error: 'This config.json isn’t Paradee’s.' };
+  if (!Array.isArray(c.voices) || !c.voices.length) {
+    return { ok: false, error: `This is the config.json of Paradee ${String(c.version || '1.0').slice(0, 8)}, which has one voice and no voice input. This app supports Paradee 1.2.` };
+  }
+  if (c.sample_rate !== 24000) return { ok: false, error: 'This Paradee config.json has an unexpected sample rate.' };
+  if (!c.voices.every((v) => typeof v === 'string' && /^[ab][fm]_[a-z0-9]+$/.test(v))) {
+    return { ok: false, error: 'This Paradee config.json lists voices this app doesn’t know (it takes US and UK English: af_, am_, bf_, bm_).' };
+  }
+  const v = c.vocab;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false, error: 'This Paradee config.json has no vocabulary.' };
+  const vocab = new Map();
+  for (const [ch, id] of Object.entries(v)) {
+    if (!Number.isInteger(id) || id < 1 || id > 177 || [...ch].length !== 1) return { ok: false, error: 'The vocabulary in this Paradee config.json is malformed.' };
+    vocab.set(ch, id);
+  }
+  if (vocab.size < 60 || !vocab.has('a') || !vocab.has('ˈ')) return { ok: false, error: 'The vocabulary in this Paradee config.json is malformed.' };
+  return { ok: true, vocab, voices: c.voices };
 }
 
 /** A Kokoro voice file: 510 style vectors of 256 float32 values. Returns { ok, error }. */
@@ -270,10 +316,14 @@ export function looksLikeNpz(bytes) {
 
 /**
  * Check a file's size and contents for its role. `bytes` is a Uint8Array of the whole file (the text files are small).
- * Returns { ok, error }.
+ * Returns { ok, error }, plus `engine` for a config.json: whose it is (identify can't tell from the name).
  */
 export function validateFile(info, bytes) {
-  if (info.role === 'config') return validateKittenConfig(new TextDecoder().decode(bytes));
+  if (info.role === 'config') {
+    const text = new TextDecoder().decode(bytes);
+    if (/"model_type"\s*:\s*"paradee"/.test(text)) { const r = parseParadeeConfig(text); return { ok: r.ok, error: r.error, engine: 'paradee' }; }
+    return { ...validateKittenConfig(text), engine: 'kitten' };
+  }
   if (info.role === 'tokenizer') { const r = parseTokenizer(new TextDecoder().decode(bytes)); return { ok: r.ok, error: r.error }; }
   if (info.role === 'voice') return validateKokoroVoice(bytes);
   if (info.role === 'piper-config') return validatePiperConfig(new TextDecoder().decode(bytes));
@@ -297,6 +347,7 @@ export async function sha256Hex(bytes) {
 export function expectedHash(info) {
   if (info.engine === 'kitten') return (SPECS.kitten.files.find((f) => f.key === info.key) || {}).sha256 || null;
   if (info.engine === 'kokoro' && info.role === 'model') return (SPECS.kokoro.models.find((m) => m.name === info.name) || {}).sha256 || null;
+  if (info.engine === 'paradee') return info.role === 'model' ? (SPECS.paradee.models.find((m) => m.name === info.name) || {}).sha256 || null : SPECS.paradee.config.sha256;
   return null;
 }
 
@@ -323,6 +374,12 @@ export function describeInstalled(engineId, records) {
     if (!voices.length) missing.push('at least one voice (for example af_heart.bin)');
     const m = has.get('model.onnx');
     return { ready: missing.length === 0, missing, voices, variant: m ? m.variant || '' : '', official: Boolean(m && m.verified) };
+  }
+  if (engineId === 'paradee') {
+    if (!has.has('model.onnx')) missing.push('paradee_int8.onnx');
+    if (!has.has('config.json')) missing.push('config.json');
+    const m = has.get('model.onnx'), c = has.get('config.json');
+    return { ready: missing.length === 0, missing, voices: [], variant: m ? m.variant || '' : '', official: Boolean(m && m.verified && c && c.verified) };
   }
   if (engineId === 'piper') {
     const byBase = new Map();
@@ -380,7 +437,7 @@ export function kokoroVoiceLabel(id) {
 
 /** Part of every cache key, so audio made by a different model file is not reused. Empty for the files the app was tested with. */
 export function modelTag(engineId, records) {
-  if (engineId === 'kokoro') {
+  if (engineId === 'kokoro' || engineId === 'paradee') {
     const m = records.find((r) => r.key === 'model.onnx');
     if (!m) return '';
     return m.verified ? m.variant || '' : `u${String(m.sha256 || '').slice(0, 8)}`;

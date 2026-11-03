@@ -2,11 +2,11 @@
 // Everything same-origin that loads successfully is stored. (Model files are not here: they live in IndexedDB, see engines/model-store.js.)
 // Bump VERSION whenever files are removed or renamed, and whenever anything under vendor/ or ui/fonts/ changes (those are
 // served cache-first): old caches are deleted on activation.
-const VERSION = 'inknarrate-v32';
+const VERSION = 'inknarrate-v33';
 const CORE = [
   './', 'index.html', 'guide/', 'manifest.webmanifest', 'icon-192.png', 'app.js',
   'engines/text.js', 'engines/script-check.js', 'engines/tour.js', 'engines/segments.js', 'engines/audio-store.js', 'engines/segment-list.js', 'engines/transport.js', 'engines/player-bar.js', 'engines/registry.js', 'engines/meta.js', 'engines/remote.js', 'engines/worker.js',
-  'engines/kitten.js', 'engines/kokoro.js', 'engines/kokoro-text.js', 'engines/piper.js', 'engines/piper-text.js', 'engines/model-specs.js', 'engines/model-store.js', 'engines/models-ui.js', 'engines/builtin.js', 'engines/dsp.js', 'engines/pronounce.js', 'engines/settings.js', 'engines/subtitles.js', 'engines/export-names.js', 'engines/project.js', 'engines/exporter.js', 'engines/export-host.js', 'engines/export-worker.js', 'engines/pool.js', 'engines/importers.js', 'engines/zip-read.js',
+  'engines/kitten.js', 'engines/kokoro.js', 'engines/kokoro-text.js', 'engines/piper.js', 'engines/piper-text.js', 'engines/paradee.js', 'engines/paradee-text.js', 'engines/model-specs.js', 'engines/model-store.js', 'engines/models-ui.js', 'engines/builtin.js', 'engines/dsp.js', 'engines/pronounce.js', 'engines/settings.js', 'engines/subtitles.js', 'engines/export-names.js', 'engines/project.js', 'engines/exporter.js', 'engines/export-host.js', 'engines/export-worker.js', 'engines/pool.js', 'engines/importers.js', 'engines/zip-read.js',
   'favicon.svg', 'ui/fonts.css', 'ui/inkplainer-ui.css', 'ui/tts.css', 'ui/inkplainer-ui.js',
   'ui/fonts/geist-latin-wght-normal.woff2', 'ui/fonts/caveat-latin-700-normal.woff2',
   'vendor/engines.bundle.js', 'vendor/export.bundle.js',

@@ -2,7 +2,7 @@
 // neural engines run in workers behind it, so this module stays light.
 import { WorkerPool } from './pool.js';
 import { builtin } from './builtin.js';
-import { KITTEN_META, KOKORO_META, PIPER_META } from './meta.js';
+import { KITTEN_META, KOKORO_META, PARADEE_META, PIPER_META } from './meta.js';
 
 const workerUrl = new URL('./worker.js', import.meta.url);
 // One pool per engine: each keeps its own workers, so a model is only ever loaded into the workers that use it.
@@ -27,4 +27,4 @@ function remote(meta) {
 }
 
 export { builtin };
-export const ENGINES = [remote(KITTEN_META), remote(KOKORO_META), remote(PIPER_META), builtin];
+export const ENGINES = [remote(KITTEN_META), remote(KOKORO_META), remote(PARADEE_META), remote(PIPER_META), builtin];

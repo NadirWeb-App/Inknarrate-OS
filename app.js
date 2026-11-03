@@ -21,10 +21,10 @@ import { createModelsUI } from './engines/models-ui.js';
 import { DEFAULT_FX, PRESET_FIELDS, MAX_TAKES, MAX_OVERRIDES, cleanOverride, loadOverrides, saveOverrides, loadFx, saveFx, loadPresets, savePresets, loadTakes, saveTakes } from './engines/settings.js';
 
 const $ = (id) => document.getElementById(id);
-const LICENSE = { kitten: 'Apache-2.0', kokoro: 'Apache-2.0', piper: 'MIT (per-voice licences)', builtin: '—' };
+const LICENSE = { kitten: 'Apache-2.0', kokoro: 'Apache-2.0', paradee: 'Apache-2.0', piper: 'MIT (per-voice licences)', builtin: '—' };
 
 const ORT = ['vendor/engines.bundle.js', 'vendor/ort/ort-wasm-simd-threaded.mjs', 'vendor/ort/ort-wasm-simd-threaded.wasm'];
-const RUNTIME = { kitten: ORT, kokoro: ORT, piper: ORT };
+const RUNTIME = { kitten: ORT, kokoro: ORT, paradee: ORT, piper: ORT };
 
 const state = {
   fx: loadFx(),
@@ -677,7 +677,7 @@ function startSession({ from = 0, offset = 0, play = false, only = null } = {}) 
   if (!state.installed[e.id]) return;
   resegment();
   if (!segs.length) return setStat('Type some text first.', true);
-  if (e.id === 'kitten' || e.id === 'kokoro') {
+  if (e.id === 'kitten' || e.id === 'kokoro' || e.id === 'paradee') {
     const problem = englishOnlyProblem(segs.map((x) => x.synthText).join(' '), e.label);
     if (problem) { setStat(problem, true); if (window.InkUI) InkUI.toast(problem, 6000); return; }
   }

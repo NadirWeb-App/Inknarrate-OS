@@ -233,6 +233,20 @@ export function createModelsUI(els, { onChange, audio } = {}) {
             }, '×')))) : null));
   }
 
+  function renderParadee() {
+    const spec = SPECS.paradee;
+    const state = describeInstalled('paradee', recs('paradee'));
+    const model = recs('paradee').find((r) => r.key === 'model.onnx');
+    const modelRows = spec.models.map((m) => fileRow({
+      name: m.name, size: mb(m.size), note: m.note, file: m,
+      added: Boolean(model && model.variant === m.variant),
+    }));
+    return card(spec, 'paradee', state,
+      group(1, 'The model', 'Pick one. Adding the other later replaces it. All four voices are inside.', h('ul', { class: 'tts-files' }, modelRows)),
+      group(2, 'Its settings', 'A tiny text file with the voice list and the phoneme table. Paradee doesn’t need tokenizer.json.',
+        h('ul', { class: 'tts-files' }, fileRow({ name: spec.config.name, size: 'a few KB', file: spec.config, added: has('paradee', 'config.json') }))));
+  }
+
   function piperVoiceCard(v, added) {
     const hint = h('div', { class: 'tts-file__hint', hidden: true, role: 'status' });
     return h('li', { class: `tts-piper${added ? ' is-added' : ''}` },
@@ -292,7 +306,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
       if (r.engine === 'piper') continue;
       let name = r.key;
       if (r.engine === 'kitten') name = (SPECS.kitten.files.find((f) => f.key === r.key) || {}).name || r.key;
-      else if (r.key === 'model.onnx') name = (SPECS.kokoro.models.find((m) => m.variant === r.variant) || {}).name || 'model.onnx';
+      else if (r.key === 'model.onnx') name = (SPECS[r.engine].models.find((m) => m.variant === r.variant) || {}).name || 'model.onnx';
       else if (r.key.startsWith('voices/')) name = `${r.key.slice(7, -4)} (voice)`;
       items.push({ engine: r.engine, name, size: r.size || 0, keys: [r.key] });
     }
@@ -303,7 +317,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
       const p = pairs.get(base); p.size += r.size || 0; p.keys.push(r.key);
     }
     items.push(...pairs.values());
-    const order = ['kitten', 'kokoro', 'piper'];
+    const order = ['kitten', 'kokoro', 'paradee', 'piper'];
     return items.sort((a, b) => order.indexOf(a.engine) - order.indexOf(b.engine) || a.name.localeCompare(b.name));
   }
 
@@ -336,7 +350,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
           onclick: async () => {
             if (!confirm(`Delete all ${items.length} stored model files (${mb(total)}) from this browser? Your text, settings and generated audio stay. You can add the files again later.`)) return;
             await removeEngine();
-            await afterChange(['kitten', 'kokoro', 'piper']);
+            await afterChange(['kitten', 'kokoro', 'paradee', 'piper']);
           },
         }, 'Delete all model files') : null),
       items.length ? h('ul', { class: 'tts-store__list' }, rows) : null,
@@ -349,7 +363,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
 
   async function render() {
     if (!(await reload())) return;
-    els.body.replaceChildren(renderKitten(), renderKokoro(), renderPiper());
+    els.body.replaceChildren(renderKitten(), renderKokoro(), renderParadee(), renderPiper());
     if (els.quick) els.quick.replaceChildren(...[renderQuickStart()].filter(Boolean));
     await renderStorage();
   }
@@ -378,6 +392,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const check = validateFile(info, bytes);
     if (!check.ok) { wait.remove(); return say(false, `${file.name}: ${check.error}`); }
+    if (check.engine) info.engine = check.engine;   // a config.json: Kitten's or Paradee's
 
     const sha256 = await sha256Hex(bytes);
     const want = expectedHash(info);

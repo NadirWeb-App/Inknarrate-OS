@@ -8,6 +8,7 @@ Free, offline text-to-speech that runs entirely in your browser. Paste or import
 |---|---|---|---|
 | **Kokoro 82M v1.0** (ONNX, onnx-community) | English (US and UK), one `.bin` per voice | `model_quantized.onnx` (92 MB, recommended) or `model.onnx`, `tokenizer.json`, and at least one voice such as `af_heart.bin` | Apache-2.0 |
 | **Kitten TTS** nano 0.8 int8 | 8 English voices | `config.json`, `kitten_tts_nano_v0_8.onnx`, `voices.npz` (about 28 MB) | Apache-2.0 |
+| **Paradee 8M v1.2** (sahilmahendrakar, distilled from Kokoro) | English (US and UK), 4 voices built in | `paradee_int8.onnx` (8.5 MB, recommended) or `paradee.onnx`, and `config.json` | Apache-2.0 |
 | **Piper** (rhasspy/piper-voices) | English, Spanish, Arabic | per voice: `<name>.onnx` and `<name>.onnx.json` | each voice has its own licence (see its model card) |
 | Browser voice | whatever your system has | none | n/a |
 
@@ -21,7 +22,7 @@ Any static server works, but `serve.mjs` sends the cross-origin-isolation header
 
 ## Features
 
-- Engines: Kokoro, Kitten, Piper, browser voice. Each neural engine runs in its own Web Worker pool, so the page stays responsive.
+- Engines: Kokoro, Kitten, Paradee, Piper, browser voice. Each neural engine runs in its own Web Worker pool, so the page stays responsive.
 - Text is split into sentences; each is generated and cached separately (edit one, regenerate only that one). Import `.txt`, `.md`, `.srt`, `.vtt`, `.html`, `.epub`, `.docx`.
 - Per-voice speed, pitch, voice blending, retakes, per-sentence settings, pronunciation rules (`Siobhan = Shiv-awn`), loudness, tone and pauses.
 - Export one recording (WAV or MP3), a zip with one file per sentence, SRT or WebVTT subtitles. Save and open projects (`.ttsproject.json`, no audio).
@@ -45,7 +46,7 @@ A clean rebuild gives a byte-identical bundle. Bump `VERSION` in `sw.js` wheneve
 
 ```
 index.html, app.js    page and UI logic
-engines/              engines (kitten, kokoro, piper, browser voice), model checks and storage,
+engines/              engines (kitten, kokoro, paradee, piper, browser voice), model checks and storage,
                       worker pool, sentences, cache, player, audio processing, export, import
 ui/                   Inkplainer UI kit, self-hosted fonts, tts.css
 vendor/               generated: onnxruntime-web, eSpeak NG, libtashkeel, MP3/zip encoder

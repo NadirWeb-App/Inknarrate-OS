@@ -4,8 +4,9 @@
 import { kitten } from './kitten.js';
 import { kokoro } from './kokoro.js';
 import { piper } from './piper.js';
+import { paradee } from './paradee.js';
 
-const engines = { kitten, kokoro, piper };
+const engines = { kitten, kokoro, piper, paradee };
 
 // One job at a time: the ONNX sessions aren't meant to be run concurrently, and a new request
 // from the page can arrive while the previous sentence is still being synthesized.

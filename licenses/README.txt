@@ -6,6 +6,7 @@ onnxruntime-web-MIT.txt           onnxruntime-web (Microsoft)
 jszip-MIT-or-GPL-3.0.txt          JSZip (dual licensed; used under its MIT terms)
 phonemizer-Apache-2.0.txt         the phonemizer package (it embeds eSpeak NG, GPL-3.0-or-later)
 libtashkeel-MIT.txt, Apache-2.0.txt   libtashkeel-wasm: MIT (project LICENSE file); the npm package also says Apache-2.0 (standard text)
+Apache-2.0.txt                    paradee/web/misaki.js (copied into engines/paradee-text.js; standard text, the project's LICENSE names no holder)
 LGPL-3.0.txt                      the MP3 encoder (@breezystack/lamejs, LGPL)
 ../ui/fonts/OFL-*.txt             Geist and Caveat fonts
 ../src/kitten-src/LICENSE         kitten-tts-js

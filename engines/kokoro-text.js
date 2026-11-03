@@ -155,12 +155,13 @@ export function chunkText(text, max = MAX_CHUNK_CHARS) {
 
 /**
  * Text -> a list of token-id arrays, each short enough for the model (at most 510 tokens).
- * Normally one; long sentences become several.
+ * Normally one; long sentences become several. `mapPhonemes` rewrites the phoneme string before it is
+ * tokenized (Paradee wants misaki's spelling, see paradee-text.js).
  */
-export async function textToTokenChunks(text, { espeak, vocab, voiceId, maxTokens = KOKORO_MAX_TOKENS }) {
+export async function textToTokenChunks(text, { espeak, vocab, voiceId, maxTokens = KOKORO_MAX_TOKENS, mapPhonemes = (ps) => ps }) {
   const out = [];
   const one = async (piece, depth) => {
-    const ids = tokenize(await phonemizeText(piece, espeak, voiceId), vocab);
+    const ids = tokenize(mapPhonemes(await phonemizeText(piece, espeak, voiceId)), vocab);
     if (!ids.length) return;
     if (ids.length <= maxTokens) { out.push(ids); return; }
     const words = piece.split(/\s+/);
