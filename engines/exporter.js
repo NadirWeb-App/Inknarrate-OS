@@ -1,13 +1,16 @@
 // Turns the generated sentences into files: one recording (WAV or MP3), a zip with one file per sentence,
 // or subtitles. The page hands in what it knows (the sentences, the audio store and how a stored clip
 // becomes the audio you hear), so this file has no state of its own.
-import { concatWithGaps, trimBounds, dbToGain, BASS_HZ, TREBLE_HZ } from './dsp.js';
+import { concatWithGaps, trimBounds, dbToGain, resampleToInt16, BASS_HZ, TREBLE_HZ } from './dsp.js';
 import { encodeWavChunks } from './text.js';
 import { encodeMp3, makeZip } from './export-host.js';
 import { cuesFor, toSrt, toVtt } from './subtitles.js';
 import { sentenceFileName } from './export-names.js';
 
-export const MP3_KBPS = [64, 96, 128, 160];   // 24 kHz MP3 (MPEG-2 layer III) tops out at 160 kbps
+export const MP3_KBPS = [64, 96, 128, 160];
+// MP3s are written at 48 kHz, not at the voices' 24 kHz: VLC (at least) stops about a second early on 24 kHz
+// and 44.1 kHz MP3s, while 48 kHz ones play to the end. Same bitrate, so the same file size.
+const MP3_RATE = 48000;
 
 const hasTone = (fx) => Boolean(fx.gain || fx.bass || fx.treble);
 
@@ -24,15 +27,6 @@ export async function renderTone(samples, rate, fx) {
   src.connect(g); g.connect(low); low.connect(high); high.connect(ctx.destination);
   src.start();
   return (await ctx.startRendering()).getChannelData(0);
-}
-
-function toInt16(f32) {
-  const out = new Int16Array(f32.length);
-  for (let i = 0; i < f32.length; i++) {
-    const x = Math.max(-1, Math.min(1, f32[i]));
-    out[i] = x < 0 ? x * 0x8000 : x * 0x7fff;
-  }
-  return out;
 }
 
 /** Number of samples a stored clip has once "trim silence" is applied (it matches prepareClip in app.js). */
@@ -63,7 +57,7 @@ export async function buildSubtitles({ segs, store, fx, gapFor, kind }) {
 }
 
 async function encodeOne(samples, rate, format, kbps, onProgress) {
-  if (format === 'mp3') return encodeMp3(toInt16(samples), rate, kbps, onProgress);
+  if (format === 'mp3') return encodeMp3(resampleToInt16(samples, rate, MP3_RATE), MP3_RATE, kbps, onProgress);
   return new Uint8Array(await encodeWavChunks([{ samples, sampleRate: rate }], 0).arrayBuffer());
 }
 
