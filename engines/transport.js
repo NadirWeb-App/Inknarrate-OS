@@ -27,6 +27,7 @@ export class Transport {
     this.volume = 1;
     this.muted = false;
     this.items = [];
+    this.endIdx = 0;         // play up to (not including) this item: items.length, or fewer for “play this sentence”
     this.state = 'idle';
     this.token = 0;          // bumped by play/stop: stale async work discards itself
     this.sched = [];         // scheduled clips: { i, src, when, start, end, dur }
@@ -81,13 +82,17 @@ export class Transport {
     this.sched = [];
   }
 
-  /** Start playing `items` from sentence `index`, `offset` seconds in. Call from a user gesture. */
-  async play(items, index = 0, offset = 0) {
+  /**
+   * Start playing `items` from sentence `index`, `offset` seconds in, stopping before item `end` (default: play to the end).
+   * Call from a user gesture.
+   */
+  async play(items, index = 0, offset = 0, end = items.length) {
     const token = ++this.token;
     this.wantPaused = false;
     this._stopSources();
     clearInterval(this.timer);
     this.items = items;
+    this.endIdx = Math.max(1, Math.min(end, items.length));
     this.nextIdx = this.firstIdx = Math.max(0, Math.min(index, items.length - 1));
     this.firstOffset = offset;
     this.lastEnd = 0;
@@ -103,7 +108,7 @@ export class Transport {
   }
 
   _pump() {
-    if (this.loading || !this.active || this.nextIdx >= this.items.length) return;
+    if (this.loading || !this.active || this.nextIdx >= this.endIdx) return;
     const now = this.ctx.currentTime;
     if (this.sched.filter((e) => e.end > now).length >= LOOKAHEAD) return;
     const i = this.nextIdx, token = this.token;
@@ -144,10 +149,10 @@ export class Transport {
       if (now >= e.when && now < e.end) return { index: e.i, offset: Math.max(0, now - e.start), dur: e.dur, covered: true };
     }
     const upcoming = this.sched.some((e) => e.when > now);
-    if (this.lastDone && (upcoming || this.nextIdx >= this.items.length)) {
+    if (this.lastDone && (upcoming || this.nextIdx >= this.endIdx)) {
       return { index: this.lastDone.i, offset: this.lastDone.dur, dur: this.lastDone.dur, covered: false };
     }
-    const index = Math.min(this.nextIdx, this.items.length - 1);
+    const index = Math.min(this.nextIdx, this.endIdx - 1);
     return { index, offset: this.lastDone || index !== this.firstIdx ? 0 : this.firstOffset, dur: 0, covered: false, waiting: true };
   }
 
@@ -163,7 +168,7 @@ export class Transport {
     if (pos.covered && pos.index !== this.lastItem) { this.lastItem = pos.index; this.onitem(pos.index); }
     this.onpos(pos);
 
-    const finished = this.nextIdx >= this.items.length && !this.loading && this.sched.every((e) => e.end <= now);
+    const finished = this.nextIdx >= this.endIdx && !this.loading && this.sched.every((e) => e.end <= now);
     if (finished && this.state !== 'paused') {
       this.token++;
       clearInterval(this.timer);
@@ -201,7 +206,7 @@ export class Transport {
     this._setState('idle');
   }
 
-  /** Jump to sentence `index`, `offset` seconds in (keeps playing from there, even if it was paused). */
+  /** Jump to sentence `index`, `offset` seconds in (keeps playing from there to the end, even if it was paused). */
   seek(index, offset = 0) { return this.play(this.items, index, offset); }
 
   next() {

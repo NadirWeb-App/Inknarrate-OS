@@ -670,9 +670,10 @@ function maybeIdle() {
 
 /**
  * Start a run. `play`: play from sentence `from` (offset seconds in) while generating what's missing.
+ * `to`: with `play`, stop before sentence `to` and generate only what is played (default: to the end).
  * `only`: generate just these sentence ids (no playback).
  */
-function startSession({ from = 0, offset = 0, play = false, only = null } = {}) {
+function startSession({ from = 0, to = null, offset = 0, play = false, only = null } = {}) {
   const e = state.engine;
   if (!state.installed[e.id]) return;
   resegment();
@@ -697,7 +698,7 @@ function startSession({ from = 0, offset = 0, play = false, only = null } = {}) 
     session = { run, native: true };
     setPhase('speaking', label);
     setStat('Speaking with the browser voice…');
-    const list = jobs.slice(from);
+    const list = jobs.slice(from, to ?? undefined);
     e.speak(list.map((j) => j.synthText), {
       voice, speed, pitch: state.fx.pitch, onchunk: (i) => { if (run === state.run) setActive(list[i].id); },
     }).then(() => {
@@ -711,12 +712,14 @@ function startSession({ from = 0, offset = 0, play = false, only = null } = {}) 
     stats: { made: 0, failed: 0, audio: 0, secs: 0 }, todo: new Set(), doneN: 0, active: 0, activeSince: 0 };
   setPhase('speaking', label);
   rebuildTimeline();
-  if (play) transport.play(jobs.map((j) => ({ id: j.id, gapAfter: gapOf(j) })), from, offset);
-  runGeneration(session, { from, only });
+  if (play) transport.play(jobs.map((j) => ({ id: j.id, gapAfter: gapOf(j) })), from, offset, to ?? jobs.length);
+  runGeneration(session, { from, only: only || (to != null ? jobs.slice(from, to).map((j) => j.id) : null) });
 }
 
 const speak = () => startSession({ play: true });
 const playFrom = (index, offset = 0) => startSession({ play: true, from: index, offset });
+/** A sentence row's play button: that sentence only. */
+const playOne = (index) => startSession({ play: true, from: index, to: index + 1 });
 
 /** Seek: inside a running session jump there (generating that sentence first); otherwise start from there. */
 function seekTo(index, offset = 0) {
@@ -1413,7 +1416,7 @@ async function boot() {
   $('splitHere').onclick = splitAtCursor;
   $('cacheClear').onclick = async () => { await store.clear(); renderCacheInfo(); resegment(); };
   list = createSegmentList($('segList'), {
-    onPlay: (id) => playFrom(Math.max(0, indexOfId(id))),
+    onPlay: (id) => playOne(Math.max(0, indexOfId(id))),
     onGenerate: (id) => startSession({ only: [id] }),
     onSelect: selectInBox,
     onMerge: mergeWithNext,
@@ -1539,7 +1542,7 @@ function initTour() {
     { target: '#speak', title: 'Press Speak', body: 'It starts at once with your browser’s own voice. Natural voices need a one-time download (next tip). Ctrl + Enter does the same.' },
     { target: '#openModels', title: 'Add natural voices', body: 'Kitten, Kokoro and Piper (English, Spanish, Arabic). Download the files once and drop them in the Models window. They stay in your browser and work offline.' },
     { target: '#engines', title: 'Choose engine and voice', body: 'Pick an engine, then a voice, speed and pitch. Sound, pauses and pronunciation are in the cards below it.' },
-    { target: '#segList', title: 'Sentences', body: 'Each sentence is generated once and kept. Play from any sentence, retake one, or edit it and only that one is made again.' },
+    { target: '#segList', title: 'Sentences', body: 'Each sentence is generated once and kept. Play any sentence on its own, retake one, or edit it and only that one is made again.' },
     { target: '#dl', title: 'Download', body: 'Save the whole recording as WAV or MP3. Under the buttons you can also get subtitles or a zip with one file per sentence. Reopen this tour any time with Tutorial.' },
   ]);
   initMenus();
