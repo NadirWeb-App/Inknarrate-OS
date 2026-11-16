@@ -161,10 +161,18 @@
             <output class="ink-slider-val" for="fxPitch" data-fx-out="pitch">0</output>
           </div>
         </div>
+        <div class="tts-field" data-needs="expressive">
+          <label class="ink-label" for="fxEx">Expressiveness</label>
+          <div class="ink-slider-row">
+            <input id="fxEx" class="ink-range" type="range" min="0.25" max="2" step="0.05" value="0.5" data-fx="exaggeration" data-fmt="x2">
+            <output class="ink-slider-val" for="fxEx" data-fx-out="exaggeration">0.50</output>
+          </div>
+        </div>
+        <p class="tts-note" data-needs="expressive">Higher is more dramatic. 0.5 is neutral; very high values can sound unstable.</p>
         <p class="tts-note" data-needs="pitch">Pitch is a simple shift. Small changes sound fine; the voice gets a little unnatural past about ±2.</p>
         <p id="ovrInfoRow" class="tts-note" hidden><span id="ovrInfo"></span> <button id="ovrReset" class="tts-seg__link" type="button">Reset all</button></p>
         <div id="notice" class="ink-hint" hidden></div>
-        <p id="modelsHint" class="tts-note" hidden>Want a more natural voice? <button class="tts-seg__link" type="button" data-ink-open="#modelsModal">Add Kitten, Kokoro or Piper</button>. They run in your browser too.</p>
+        <p id="modelsHint" class="tts-note" hidden>Want a more natural voice? <button class="tts-seg__link" type="button" data-ink-open="#modelsModal">Add Kitten, Kokoro, Piper or Chatterbox</button>. They run in your browser too.</p>
         </div>
       </div>
       <div class="ink-card is-collapsed" data-needs="fx">
@@ -270,6 +278,16 @@
           </div>
           <p id="workersInfo" class="tts-note"></p>
           <p class="tts-note">Each extra worker keeps its own copy of the model in memory and uses another processor core. More workers make long texts finish sooner, but more than 4 only helps on a computer with many processor cores and plenty of memory. If the page feels slow while generating, choose 1.</p>
+          <div class="tts-field">
+            <label class="ink-label" for="audioLimit">Saved audio limit</label>
+            <select id="audioLimit" class="ink-select">
+              <option value="900" selected>900 MB (default)</option>
+              <option value="1500">1.5 GB</option>
+              <option value="2000">2 GB</option>
+            </select>
+          </div>
+          <p id="audioLimitInfo" class="tts-note"></p>
+          <p class="tts-note">Generated sentences are kept in this browser so you can play and export them again. About one hour of speech takes 170 MB. When the limit is reached the app stops and keeps what it made; it never deletes sentences of the text you are working on. A higher limit needs free disk space (your browser decides how much it allows) and more memory when you export.</p>
         </div>
       </div>
       <div class="ink-card is-collapsed">
@@ -298,7 +316,7 @@
 
 <section class="tts-about" aria-labelledby="aboutTitle">
   <h2 id="aboutTitle">Free text to speech that stays on your computer</h2>
-  <p>Inknarrate reads your text aloud with natural voices that run inside your browser. Nothing you type is uploaded, there is no sign-up, and after your first visit it works offline. Add the voice models you like (Kitten TTS, Kokoro or Piper), pick English, Spanish or Arabic, and export the result as MP3 or WAV, with subtitles if you want them.</p>
+  <p>Inknarrate reads your text aloud with natural voices that run inside your browser. Nothing you type is uploaded, there is no sign-up, and after your first visit it works offline. Add the voice models you like (Kitten TTS, Kokoro, Piper or Chatterbox), pick English, Spanish or Arabic, and export the result as MP3 or WAV, with subtitles if you want them.</p>
   <p>New here? Read the <a href="./guide/">guide</a>, or press <strong>Models</strong> and follow the quick start.</p>
 </section>
 
@@ -327,7 +345,7 @@
         <span class="tts-drop__icon" id="modelsDropIcon" aria-hidden="true"></span>
         <div class="tts-drop__text"><strong>Drop the downloaded files here</strong><span>You can add them all at once or one by one.</span></div>
         <button id="modelsPick" class="ink-btn ink-btn--primary" type="button">Choose files…</button>
-        <input id="modelsFile" type="file" multiple hidden accept=".onnx,.json,.npz,.bin">
+        <input id="modelsFile" type="file" multiple hidden accept=".onnx,.onnx_data,.json,.npz,.bin,.wav">
       </div>
       <ul id="modelsResults" class="tts-results" aria-live="polite"></ul>
       <div id="modelsBody"></div>
@@ -378,6 +396,22 @@
       <button id="ovrSave" class="ink-btn ink-btn--cta" type="button">Save</button>
       <button id="ovrAll" class="ink-btn" type="button" title="Give every sentence these settings">Save for all</button>
       <button id="ovrClear" class="ink-btn ink-btn--danger" type="button">Back to default</button>
+    </div>
+  </div>
+</div>
+
+<div class="ink-modal" id="fitModal" role="dialog" aria-modal="true" aria-labelledby="fitTitle">
+  <div class="ink-modal__window">
+    <div class="ink-modal__header">
+      <h2 class="ink-modal__title" id="fitTitle">This may not fit in storage</h2>
+      <button class="ink-icon-btn" type="button" data-ink-close aria-label="Close">×</button>
+    </div>
+    <div class="ink-modal__body">
+      <p id="fitText" class="tts-note"></p>
+    </div>
+    <div class="ink-modal__footer tts-ovr-footer">
+      <button id="fitGo" class="ink-btn ink-btn--cta" type="button">Generate anyway</button>
+      <button id="fitCancel" class="ink-btn" type="button" data-ink-close>Cancel</button>
     </div>
   </div>
 </div>

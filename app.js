@@ -3,7 +3,7 @@ import { normalizeText } from './engines/text.js';
 import { createTour } from './engines/tour.js';
 import { englishOnlyProblem } from './engines/script-check.js';
 import { splitText, reconcile, hash53 } from './engines/segments.js';
-import { AudioStore, toFloat32 } from './engines/audio-store.js';
+import { AudioStore, toFloat32, LIMIT_CHOICES } from './engines/audio-store.js';
 import { createSegmentList } from './engines/segment-list.js';
 import { Transport } from './engines/transport.js';
 import { createPlayerBar } from './engines/player-bar.js';
@@ -15,16 +15,16 @@ import { autoWorkers, MAX_WORKERS, RESTART_MESSAGE } from './engines/pool.js';
 import { importFile, MAX_IMPORT_CHARS } from './engines/importers.js';
 import { makeProject, parseProject, MAX_PROJECT_BYTES } from './engines/project.js';
 import { parseRules, applyRules } from './engines/pronounce.js';
-import { describeInstalled, kokoroVoiceLabel, piperVoiceList, modelTag } from './engines/model-specs.js';
+import { describeInstalled, kokoroVoiceLabel, piperVoiceList, chatterboxVoiceList, modelTag } from './engines/model-specs.js';
 import { listFiles } from './engines/model-store.js';
 import { createModelsUI } from './engines/models-ui.js';
 import { DEFAULT_FX, PRESET_FIELDS, MAX_TAKES, MAX_OVERRIDES, cleanOverride, loadOverrides, saveOverrides, loadFx, saveFx, loadPresets, savePresets, loadTakes, saveTakes } from './engines/settings.js';
 
 const $ = (id) => document.getElementById(id);
-const LICENSE = { kitten: 'Apache-2.0', kokoro: 'Apache-2.0', piper: 'MIT (per-voice licences)', builtin: '—' };
+const LICENSE = { kitten: 'Apache-2.0', kokoro: 'Apache-2.0', piper: 'MIT (per-voice licences)', chatterbox: 'MIT', builtin: '—' };
 
 const ORT = ['vendor/engines.bundle.js', 'vendor/ort/ort-wasm-simd-threaded.mjs', 'vendor/ort/ort-wasm-simd-threaded.wasm'];
-const RUNTIME = { kitten: ORT, kokoro: ORT, piper: ORT };
+const RUNTIME = { kitten: ORT, kokoro: ORT, piper: ORT, chatterbox: ORT };
 
 const state = {
   fx: loadFx(),
@@ -63,10 +63,13 @@ const inflight = new Map(); // cache key -> promise of a clip being generated, s
 function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } }
 
+/** Loading and generating messages get a highlighted, animated bar, so a long wait doesn't look like a freeze. */
+const WORKING = /^(Loading|Reading|Starting|Listening|Processing|Generating|Preparing)\b/;
 function setStat(msg, isError = false) {
   const el = $('stat');
   el.textContent = msg;
   el.classList.toggle('error', isError);
+  el.classList.toggle('working', !isError && WORKING.test(msg));
 }
 
 async function cached(url) {
@@ -109,7 +112,7 @@ async function refreshModels() {
     state.installed[e.id] = d.ready;
     state.tags[e.id] = modelTag(e.id, mine);
     state.modelSizes[e.id] = mine.reduce((n, r) => n + (r.size || 0), 0);
-    state.voices[e.id] = e.id === 'kokoro' ? d.voices.map(kokoroVoiceLabel) : e.id === 'piper' ? piperVoiceList(mine) : e.voices;
+    state.voices[e.id] = e.id === 'kokoro' ? d.voices.map(kokoroVoiceLabel) : e.id === 'piper' ? piperVoiceList(mine) : e.id === 'chatterbox' ? chatterboxVoiceList(mine) : e.voices;
   }
   warmLanguageData();
 }
@@ -232,6 +235,7 @@ function tabKeys(ev) {
 
 function renderEngine() {
   const e = state.engine;
+  if ($('workersInfo')) updateWorkersInfo();
   const sel = $('voice');
   sel.innerHTML = '';
   const voices = state.voices[e.id] || [];
@@ -315,6 +319,7 @@ function bakedOpts(e, voice, pitch = state.fx.pitch) {
   const c = e.caps || {}, fx = state.fx, o = {};
   if (c.mix && fx.voice2 && fx.voice2 !== voice && fx.mix > 0) { o.voice2 = fx.voice2; o.mix = fx.mix; }
   if (c.pitch && pitch) o.pitch = pitch;
+  if (c.expressive && fx.exaggeration !== 0.5) o.exaggeration = fx.exaggeration;
   return o;
 }
 
@@ -342,6 +347,7 @@ function computeKeys() {
     const extra = [];
     if (opts.voice2) extra.push('v2=' + opts.voice2, 'mix=' + opts.mix.toFixed(2));
     if (opts.pitch) extra.push('pitch=' + opts.pitch);
+    if (opts.exaggeration) extra.push('ex=' + opts.exaggeration);
     const t = c.take ? takeOf(s) : 0;
     if (t) extra.push('take=' + t);
     if (state.tags[e.id]) extra.push('m=' + state.tags[e.id]);   // a different model file makes different audio
@@ -486,8 +492,74 @@ function setActive(id) {
 
 function renderCacheInfo() {
   const { count, bytes } = store.stats();
-  $('cacheInfo').textContent = count ? `${count} sentence${count === 1 ? '' : 's'} (${mb(bytes)})` : 'none';
+  $('cacheInfo').textContent = count ? `${count} sentence${count === 1 ? '' : 's'} (${mb(bytes)} of ${mb(store.limit)})` : 'none';
   $('cacheClear').hidden = !count;
+  renderLimitInfo();
+  // A heads-up once per fill-up, before the limit is reached.
+  if (bytes >= store.limit * 0.8) {
+    if (!state.warnedLow && window.InkUI) {
+      state.warnedLow = true;
+      InkUI.toast(`Saved audio is ${Math.round(bytes / store.limit * 100)}% full (${mb(bytes)} of ${mb(store.limit)}). Export what you need, or raise the limit in Performance.`, 7000);
+    }
+  } else state.warnedLow = false;
+}
+
+/** The note under the "Saved audio limit" setting: usage, and what the browser says it can hold. */
+let limitNote = '', limitNoteAt = 0;
+async function renderLimitInfo() {
+  const el = $('audioLimitInfo');
+  if (!el) return;
+  const bytes = store.bytes();
+  const show = () => { el.textContent = `Using ${mb(bytes)} of ${mb(store.limit)}${bytes >= store.limit * 0.8 ? ' (almost full)' : ''}.${limitNote}`; };
+  show();
+  if (Date.now() - limitNoteAt < 5000) return;   // asking the browser on every sentence would be wasteful
+  limitNoteAt = Date.now();
+  try {
+    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    limitNote = '';
+    if (est && est.quota) {
+      const room = est.quota - Math.max(0, (est.usage || 0) - bytes);   // what's left for audio once the other stored data is counted
+      if (room < store.limit) limitNote = ` Your browser only allows this site about ${mb(Math.max(0, room))} for audio, so it may fill up sooner.`;
+    }
+  } catch { limitNote = ''; }
+  show();
+}
+
+// ---- storage fit ------------------------------------------------------------------
+
+/** Rough size of the audio for these sentences: 24 kHz, 16-bit, so 48,000 bytes per second of speech. */
+function estimateBytes(list) {
+  const r = state.rate[state.engine.id];
+  const cps = (r && r.audio ? r.chars / r.audio : 14) * curSpeed();
+  let chars = 0;
+  for (const x of list) chars += x.synthText.length;
+  return Math.round(chars / cps * 48000);
+}
+
+/** Will the sentences this run needs fit under the limit? Clips of other texts can be dropped, so they don't count. */
+function fitCheck(scope) {
+  const missing = scope.filter((x) => !store.has(x.key));
+  if (!missing.length) return null;
+  let kept = 0;
+  for (const x of segs) if (store.has(x.key)) kept += store.info(x.key).bytes;
+  const need = estimateBytes(missing);
+  if (kept + need <= store.limit) return null;
+  const room = Math.max(0, store.limit - kept);
+  let used = 0, fits = 0;
+  for (const x of missing) { used += estimateBytes([x]); if (used > room) break; fits++; }
+  return { need, kept, room, fits, count: missing.length };
+}
+
+function askFit(f, go) {
+  const hours = (f.need / 48000 / 3600).toFixed(1);
+  const canRaise = store.limit < LIMIT_CHOICES[LIMIT_CHOICES.length - 1];
+  $('fitText').textContent = `The ${f.count} sentence${f.count === 1 ? '' : 's'} still to generate need about ${mb(f.need)} (roughly ${hours} hours of speech), `
+    + `but the saved audio limit is ${mb(store.limit)}${f.kept ? ` and ${mb(f.kept)} of it is already used by this text` : ''}. `
+    + `About ${f.fits} sentence${f.fits === 1 ? '' : 's'} would fit. If you continue, generation stops when storage is full and keeps what it made. `
+    + (canRaise ? 'You can raise the limit in Performance (up to 2 GB), or ' : 'You can ')
+    + 'generate and export the text in parts, for example a few chapters at a time.';
+  $('fitGo').onclick = () => { InkUI.closeModal('#fitModal'); go(); };
+  InkUI.openModal('#fitModal');
 }
 
 // ---- speaking / generating --------------------------------------------------------
@@ -559,15 +631,31 @@ async function generateOne(sess, job) {
     return null;
   }
   setBusy(job.id, 'generating');
-  if (live()) setStat(sess.todo.has(job.key) ? `Generating ${Math.min(sess.doneN + 1, sess.todo.size)}/${sess.todo.size}…` : 'Generating…');
+  if (live()) {
+    // With several workers, say when some are still loading (or failed to), so "why not 4 at once?" has an answer on screen.
+    const want = e.workers ? e.workers() : 1, ready = e.readyWorkers ? e.readyWorkers() : want;
+    const note = want > 1 && ready < want ? ` · ${ready} of ${want} workers ready` : '';
+    setStat((sess.todo.has(job.key) ? `Generating ${Math.min(sess.doneN + 1, sess.todo.size)}/${sess.todo.size}…` : 'Generating…') + note);
+  }
+  // A slow engine (Chatterbox) reports what it is doing, so a long wait doesn't look like a hang.
+  const baseStat = sess.todo.has(job.key) ? `Generating ${Math.min(sess.doneN + 1, sess.todo.size)}/${sess.todo.size}` : 'Generating';
+  const onProgress = (msg) => { if (live() && sess.active <= 1) setStat(`${baseStat} · ${msg}`); };
+  const atOnce = () => { if (live() && sess.active > 1) setStat(`${baseStat} · ${sess.active} at once`); };
   const t0 = performance.now();
   // Time spent generating = the time at least one sentence was in progress (sentences can run side by side).
   if (sess.active++ === 0) sess.activeSince = t0;
+  atOnce();
   const endActive = () => { if (--sess.active === 0) sess.stats.secs += (performance.now() - sess.activeSince) / 1000; };
   let clip;
   try {
-    const out = await e.synth(job.synthText, { voice, speed, ...opts, take: job.take });
+    const out = await e.synth(job.synthText, { voice, speed, ...opts, take: job.take }, onProgress);
     clip = await store.put(job.key, out); // kept even if this run was stopped meanwhile
+    if (store.full && live()) {
+      const msg = `Saved audio storage is full (${mb(store.bytes())} of ${mb(store.limit)}). What was made is kept. Export it, clear audio, or raise the limit in Performance, then generate again to continue.`;
+      stop();
+      setStat(msg, true);
+      if (window.InkUI) InkUI.toast(msg, 9000);
+    }
   } catch (err) {
     endActive();
     console.error(err);
@@ -673,14 +761,19 @@ function maybeIdle() {
  * `to`: with `play`, stop before sentence `to` and generate only what is played (default: to the end).
  * `only`: generate just these sentence ids (no playback).
  */
-function startSession({ from = 0, to = null, offset = 0, play = false, only = null } = {}) {
+function startSession({ from = 0, to = null, offset = 0, play = false, only = null, confirmed = false } = {}) {
   const e = state.engine;
   if (!state.installed[e.id]) return;
   resegment();
   if (!segs.length) return setStat('Type some text first.', true);
-  if (e.id === 'kitten' || e.id === 'kokoro') {
+  if (e.id === 'kitten' || e.id === 'kokoro' || e.id === 'chatterbox') {
     const problem = englishOnlyProblem(segs.map((x) => x.synthText).join(' '), e.label);
     if (problem) { setStat(problem, true); if (window.InkUI) InkUI.toast(problem, 6000); return; }
+  }
+
+  if (e.kind !== 'native' && !confirmed && window.InkUI) {
+    const f = fitCheck(only ? segs.filter((x) => only.includes(x.id)) : segs.slice(from));
+    if (f) return askFit(f, () => startSession({ from, to, offset, play, only, confirmed: true }));
   }
 
   const run = ++state.run;
@@ -693,6 +786,7 @@ function startSession({ from = 0, to = null, offset = 0, play = false, only = nu
   const jobs = segs.map((s) => ({ id: s.id, text: s.text, synthText: s.synthText, key: s.key, para: s.para, chars: s.synthText.length,
     take: (e.caps && e.caps.take) ? takeOf(s) : 0, ...(e.kind === 'native' ? {} : effOf(s, e)) }));
   const label = play ? 'Speaking' : 'Generating';
+  store.protect = new Set(jobs.map((j) => j.key));   // the audio of this text is never the one dropped to make room
 
   if (e.kind === 'native') {
     session = { run, native: true };
@@ -888,12 +982,21 @@ function applyWorkers() {
   const n = wantedWorkers();
   let restarted = false;
   for (const e of ENGINES) {
-    if (e.setWorkers && e.setWorkers(n)) { restarted = true; loads.delete(e.id); state.loaded.delete(e.id); }
+    if (e.setWorkers && e.setWorkers(n, $('workers').value === 'auto')) { restarted = true; loads.delete(e.id); state.loaded.delete(e.id); }
   }
-  $('workersInfo').textContent = $('workers').value === 'auto'
-    ? `Auto uses ${n} worker${n === 1 ? '' : 's'} on this device.`
-    : `${n} sentence${n === 1 ? '' : 's'} at a time.`;
+  updateWorkersInfo();
   return restarted;
+}
+
+function updateWorkersInfo() {
+  const n = wantedWorkers(), auto = $('workers').value === 'auto';
+  let t = auto ? `Auto uses ${n} worker${n === 1 ? '' : 's'} on this device.` : `${n} sentence${n === 1 ? '' : 's'} at a time.`;
+  const e = state.engine;
+  if (e && e.id === 'chatterbox') {
+    t += auto ? ' Chatterbox is large, so Auto gives it 1 worker.'
+      : n > 1 ? ` Warning: every Chatterbox worker keeps its own copy of the model, about 1.5 GB each (${n} workers: about ${(n * 1.5).toFixed(1)} GB), and each one takes minutes to load. It usually does not make things faster: a single worker already uses all your processor cores. If the tab runs out of memory it will crash. Use 1 unless you have plenty of free memory and a reason.` : '';
+  }
+  $('workersInfo').textContent = t;
 }
 
 function initWorkers() {
@@ -1027,8 +1130,9 @@ const FMT = {
   st: (v) => `${v > 0 ? '+' : ''}${v} st`,
   db: (v) => `${v > 0 ? '+' : ''}${v} dB`,
   s: (v) => `${v.toFixed(2)} s`,
+  x2: (v) => v.toFixed(2),
 };
-const BAKED = new Set(['mix', 'pitch']);
+const BAKED = new Set(['mix', 'pitch', 'exaggeration']);
 const showSpeed = () => { $('speedOut').textContent = `${parseFloat($('speed').value).toFixed(2)}×`; };
 
 /** Show only the controls the selected engine supports. */
@@ -1397,6 +1501,7 @@ function initModels() {
     { quick: $('modelsQuick'), body: $('modelsBody'), results: $('modelsResults'), input: $('modelsFile'), pick: $('modelsPick'), drop: $('modelsDrop'), storage: $('modelsStorage') },
     {
       onChange: onModelsChanged,
+      prepareVoice: (id, voice, progress) => { const e = ENGINES.find((x) => x.id === id); return e.prepare(voice, progress); },
       audio: {
         info: async () => { const { count, bytes } = store.stats(); return { count, text: count ? `${count} sentence${count === 1 ? '' : 's'} (${mb(bytes)})` : 'none' }; },
         clear: async () => { await store.clear(); renderCacheInfo(); resegment(); },
@@ -1410,6 +1515,13 @@ function initModels() {
 
 async function boot() {
   buildTabs();
+  const savedLimit = parseInt(lsGet('audioLimit'), 10);
+  if (LIMIT_CHOICES.includes(savedLimit * 1e6)) { store.setLimit(savedLimit * 1e6); $('audioLimit').value = String(savedLimit); }
+  $('audioLimit').onchange = () => {
+    store.setLimit(parseInt($('audioLimit').value, 10) * 1e6);
+    lsSet('audioLimit', $('audioLimit').value);
+    renderCacheInfo();
+  };
   $('speak').onclick = speak;
   $('stop').onclick = () => stop('Stopped.');
   $('genAll').onclick = () => startSession();
@@ -1538,12 +1650,12 @@ function initMenus() {
 
 function initTour() {
   const tour = createTour([
-    { target: '#text', title: 'Add your text', body: 'Type or paste text here, or drop a .txt, .epub or .docx file on the box. Every sentence becomes its own clip in the list below.' },
-    { target: '#speak', title: 'Press Speak', body: 'It starts at once with your browser’s own voice. Natural voices need a one-time download (next tip). Ctrl + Enter does the same.' },
-    { target: '#openModels', title: 'Add natural voices', body: 'Kitten, Kokoro and Piper (English, Spanish, Arabic). Download the files once and drop them in the Models window. They stay in your browser and work offline.' },
-    { target: '#engines', title: 'Choose engine and voice', body: 'Pick an engine, then a voice, speed and pitch. Sound, pauses and pronunciation are in the cards below it.' },
-    { target: '#segList', title: 'Sentences', body: 'Each sentence is generated once and kept. Play any sentence on its own, retake one, or edit it and only that one is made again.' },
-    { target: '#dl', title: 'Download', body: 'Save the whole recording as WAV or MP3. Under the buttons you can also get subtitles or a zip with one file per sentence. Reopen this tour any time with Tutorial.' },
+    { target: '#text', title: 'Add your text', body: 'Type or paste text here, or drop a .txt, .epub or .docx file on the box.' },
+    { target: '#speak', title: 'Press Speak', body: 'It starts at once with your browser’s own voice. For more natural voices, add a model next.' },
+    { target: '#openModels', title: 'Add natural voices', body: 'Kokoro, Kitten and Piper download once and then work offline. Add one, then pick it under Engine.' },
+    { target: '#engines', title: 'Choose engine and voice', body: 'Pick an engine, then a voice and speed. Sound, pauses and pronunciation are in the cards below.' },
+    { target: '#segList', title: 'Sentences', body: 'Each sentence is kept once it is made. Play any sentence on its own, or edit one to redo only that.' },
+    { target: '#dl', title: 'Download', body: 'Save the recording as WAV or MP3, with subtitles or a zip if you want. Reopen this tour any time with Tutorial.' },
   ]);
   initMenus();
   initModelsTour();
@@ -1557,11 +1669,9 @@ function initTour() {
 
 function initModelsTour() {
   const tour = createTour([
-    { target: '#modelsQuick', title: 'Quick start', body: 'New here? Kokoro is a very natural English voice (about 93 MB in three files). This button takes you to its files; you press Download next to each one.' },
-    { target: '.tts-howto', title: 'Three steps', body: 'Download the files, drop them into the box, then pick a voice. You only do this once per model; the files stay in this browser.' },
-    { target: '#modelsDrop', title: 'Drop the files here', body: 'Drag the downloaded files onto this box, or press Choose files. You can add them all at once or one by one. The app tells you what each file was and what is still missing.' },
-    { target: '#modelsBody .tts-model.is-recommended', title: 'Pick a model', body: 'The cards are closed to keep things tidy: press one to see its files, each with a Download button. Kokoro (green) is the one we recommend: very natural English. Kitten is tiny and fast, and Piper adds Spanish and Arabic.' },
-    { target: '#modelsStorage', title: 'Your stored files', body: 'See what is saved in this browser, delete a single file, or remove everything the app stored. Deleting a model never touches your text or projects.' },
+    { target: '#modelsQuick', title: 'Quick start', body: 'New here? Press this for Kokoro, a very natural English voice (about 93 MB in three files). Download its files, then drop them in the box below.' },
+    { target: '#modelsDrop', title: 'Drop the files here', body: 'Drag the downloaded files onto this box, or press Choose files. The app tells you what each file was and what is still missing.' },
+    { target: '#modelsBody .tts-model.is-recommended', title: 'Other models', body: 'Open a card to see its files. Kitten is tiny and fast, and Piper adds Spanish and Arabic.' },
   ], { key: 'tour-models-done' });
   const modal = $('modelsModal');
   const btn = $('modelsTourBtn');

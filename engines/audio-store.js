@@ -10,7 +10,8 @@ import { trimBounds } from './dsp.js';
 
 const DB_NAME = 'tts-audio';
 const MEM_CAP = 160e6;   // bytes kept in memory
-const DISK_CAP = 900e6;  // bytes kept in IndexedDB before the oldest clips are dropped
+export const LIMIT_DEFAULT = 900e6;                // bytes kept in IndexedDB before the oldest clips are dropped
+export const LIMIT_CHOICES = [900e6, 1.5e9, 2e9];  // what the user may choose (the default is the smallest)
 
 const toInt16 = (f32) => {
   const out = new Int16Array(f32.length);
@@ -36,6 +37,9 @@ export class AudioStore {
     this.meta = new Map();   // key -> { bytes, dur, rate, t }   (every clip, memory or disk)
     this.mem = new Map();    // key -> Int16Array                (recently used clips; Map order = recency)
     this.memBytes = 0;
+    this.limit = LIMIT_DEFAULT;
+    this.protect = null;     // Set of keys that must not be dropped (the sentences of the text being worked on)
+    this.full = false;       // true when the limit is reached and nothing more may be dropped, or the browser refused a write
     this.db = null;
     this.ready = this._open();
   }
@@ -57,6 +61,9 @@ export class AudioStore {
       this.db = null; // memory only
     }
   }
+
+  setLimit(bytes) { if (LIMIT_CHOICES.includes(bytes)) { this.limit = bytes; this.full = this.bytes() > bytes; } }
+  bytes() { let n = 0; for (const m of this.meta.values()) n += m.bytes; return n; }
 
   has(key) { return this.meta.has(key); }
   info(key) { return this.meta.get(key); }
@@ -98,7 +105,10 @@ export class AudioStore {
         tx.objectStore('clips').put({ key, pcm });
         await txDone(tx);
         await this._trimDisk(key);
-      } catch { /* quota or private mode: the clip still works from memory */ }
+      } catch (err) {
+        // Quota or private mode: the clip still works from memory. A refused write means the browser's own limit is reached.
+        if (err && err.name === 'QuotaExceededError') this.full = true;
+      }
     }
     return { pcm, rate: sampleRate, dur: m.dur, trim: m.trim };
   }
@@ -115,22 +125,26 @@ export class AudioStore {
     }
   }
 
+  /** Drop the oldest clips when over the limit, but never the clip just stored or any protected one. Sets `full` if still over. */
   async _trimDisk(keep) {
-    let total = 0;
-    for (const m of this.meta.values()) total += m.bytes;
-    if (total <= DISK_CAP) return;
-    const oldest = [...this.meta.values()].filter((m) => m.key !== keep).sort((a, b) => a.t - b.t);
-    const tx = this.db.transaction(['meta', 'clips'], 'readwrite');
-    for (const m of oldest) {
-      if (total <= DISK_CAP * 0.9) break;
-      tx.objectStore('meta').delete(m.key);
-      tx.objectStore('clips').delete(m.key);
-      this.meta.delete(m.key);
-      const p = this.mem.get(m.key);
-      if (p) { this.memBytes -= p.byteLength; this.mem.delete(m.key); }
-      total -= m.bytes;
+    let total = this.bytes();
+    if (total > this.limit) {
+      const oldest = [...this.meta.values()].filter((m) => m.key !== keep && !(this.protect && this.protect.has(m.key))).sort((a, b) => a.t - b.t);
+      if (oldest.length) {
+        const tx = this.db.transaction(['meta', 'clips'], 'readwrite');
+        for (const m of oldest) {
+          if (total <= this.limit * 0.9) break;
+          tx.objectStore('meta').delete(m.key);
+          tx.objectStore('clips').delete(m.key);
+          this.meta.delete(m.key);
+          const p = this.mem.get(m.key);
+          if (p) { this.memBytes -= p.byteLength; this.mem.delete(m.key); }
+          total -= m.bytes;
+        }
+        await txDone(tx);
+      }
     }
-    await txDone(tx);
+    this.full = total > this.limit;
   }
 
   stats() {
@@ -140,7 +154,7 @@ export class AudioStore {
   }
 
   async clear() {
-    this.meta.clear(); this.mem.clear(); this.memBytes = 0;
+    this.meta.clear(); this.mem.clear(); this.memBytes = 0; this.full = false;
     if (this.db) {
       try {
         const tx = this.db.transaction(['meta', 'clips'], 'readwrite');

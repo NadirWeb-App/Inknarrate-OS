@@ -391,3 +391,41 @@ body.has-player { padding-bottom: 76px; }
   .ink-topbar .ink-btn, .ink-topbar .ink-btn--primary { padding: 7px 9px; }
   .tts-vsep { margin: 6px 0; }
 }
+
+
+
+/* Phones: a big Speak button on its own row, a shorter text box, and the voice settings right after the text
+   (before the sentence list, which can be long). The keyboard hints mean nothing on a touch screen. */
+@media (max-width: 640px) {
+  .tts-actions { flex-wrap: wrap; }
+  .tts-actions .ink-btn--cta { flex: 1 1 100%; min-height: 46px; font-size: 15px; }
+  .tts-actions .ink-btn:not(.ink-btn--cta) { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+  .tts-text { min-height: 150px; }
+}
+@media (max-width: 800px) {
+  .tts-col { display: contents; }
+  .tts-col > .tts-panel:first-child { order: 1; }
+  .tts-main > aside.tts-panel { order: 2; }
+  .tts-col > .tts-panel:not(:first-child) { order: 3; }
+  .tts-main > .tts-tech { order: 4; }
+}
+@media (hover: none), (max-width: 640px) { .tts-hotkeys { display: none; } }
+@media (max-width: 400px) {
+  .ink-topbar .ink-btn, .ink-topbar .ink-btn--primary { padding: 7px 7px; font-size: 11.5px; }
+  .tts-actions .ink-btn:not(.ink-btn--cta) { font-size: 12px; padding: 0 4px; }
+}
+.tts-note.is-warn{color:#b45309;border-left:3px solid #b45309;padding-left:10px}
+.tts-clone{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.tts-clone input[type=text]{flex:1 1 180px;min-width:0}
+.tts-consent{display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:.85rem;line-height:1.4}
+.tts-consent input{margin-top:3px;flex:none}
+.tts-writer{margin:10px 0;padding:8px 10px;border:1px solid var(--ink-border,#d4d4d8);border-radius:8px}
+.tts-writer__title{font-weight:600;margin-bottom:4px}
+
+/* Loading / generating: clearly "busy", with a moving bar, never mistaken for a frozen page */
+.tts-stat.working{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px 12px;font-size:13px;font-weight:600;color:var(--ink-text);background:var(--ink-surface);border:1px solid var(--ink-accent);border-radius:var(--ink-radius-md,8px);overflow:hidden}
+.tts-stat.working::before{content:"";flex:none;width:14px;height:14px;border:2px solid var(--ink-border-hi);border-top-color:var(--ink-accent);border-radius:50%;animation:tts-spin .8s linear infinite}
+.tts-stat.working::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:35%;background:var(--ink-accent);animation:tts-slide 1.4s ease-in-out infinite}
+@keyframes tts-spin{to{transform:rotate(360deg)}}
+@keyframes tts-slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+@media (prefers-reduced-motion:reduce){.tts-stat.working::before,.tts-stat.working::after{animation:none}.tts-stat.working::after{width:100%;opacity:.35}}

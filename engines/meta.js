@@ -39,3 +39,13 @@ export const PIPER_META = {
   supportsSpeed: () => true,
   caps: { pitch: true, mix: false, take: true, fx: true, override: true },
 };
+
+export const CHATTERBOX_META = {
+  id: 'chatterbox',
+  label: 'Chatterbox',
+  normalize: false, // the model reads numbers and symbols the way people write them
+  voices: [],       // filled in from the stored voices
+  supportsSpeed: () => false,   // it has no speed control; use Expressiveness for the feel
+  caps: { pitch: false, mix: false, take: false, fx: true, override: true, expressive: true },
+  autoWorkers: 1,   // about 1.5 GB of weights per worker: "Auto" uses one; more only when the person picks a number
+};

@@ -10,6 +10,7 @@ export const DEFAULT_FX = {
   voice2: '',          // second voice to blend in ('' = none)          baked
   mix: 0.5,            // 0..1 share of the second voice                baked
   pitch: 0,            // semitones                                     baked
+  exaggeration: 0.5,   // Chatterbox expressiveness, 0.25..2             baked
   gain: 0,             // dB                                            live
   bass: 0,             // dB                                            live
   treble: 0,           // dB                                            live
@@ -21,7 +22,7 @@ export const DEFAULT_FX = {
 };
 
 /** Fields saved in a preset (the pronunciation rules are not: they belong to your text, not a voice). */
-export const PRESET_FIELDS = ['voice2', 'mix', 'pitch', 'gain', 'bass', 'treble', 'normalize', 'trim', 'gapSentence', 'gapPara'];
+export const PRESET_FIELDS = ['voice2', 'mix', 'pitch', 'exaggeration', 'gain', 'bass', 'treble', 'normalize', 'trim', 'gapSentence', 'gapPara'];
 
 export const MAX_TAKES = 6; // retake cycles through take 1..6, then back to the default
 
@@ -39,7 +40,7 @@ export const saveTakes = (t) => write('tts:takes', t);
 
 /** Allowed range of each numeric setting (the sliders use the same ones). Used to sanitize opened project files. */
 export const FX_LIMITS = {
-  speed: [0.6, 1.6], mix: [0, 1], pitch: [-3, 3], gain: [-12, 12], bass: [-8, 8], treble: [-8, 8],
+  speed: [0.6, 1.6], mix: [0, 1], pitch: [-3, 3], exaggeration: [0.25, 2], gain: [-12, 12], bass: [-8, 8], treble: [-8, 8],
   gapSentence: [0, 1.5], gapPara: [0, 3], pause: [0, 3],
 };
 

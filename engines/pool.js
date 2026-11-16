@@ -26,6 +26,7 @@ export class WorkerPool {
     this.size = 1;
     this.slots = [];            // { host, loading, loaded, busy }
     this.expanded = false;      // background loading of workers 1..size-1 has been started
+    this.waiters = [];          // sentences waiting for a free worker
   }
 
   /** Threads each worker gives onnxruntime: the cores shared out evenly. */
@@ -44,6 +45,7 @@ export class WorkerPool {
     for (const s of this.slots) s.host.terminate(RESTART_MESSAGE);
     this.slots = [];
     this.expanded = false;
+    this._wake();   // anything waiting: its call fails with the restart message or finds a fresh pool
   }
 
   _slot(i) {
@@ -76,18 +78,38 @@ export class WorkerPool {
     }
   }
 
-  async synth(engine, text, opts) {
+  /** Wake the sentences waiting for a worker (one became free, or finished loading). */
+  _wake() { const w = this.waiters; this.waiters = []; for (const f of w) f(); }
+
+  async synth(engine, text, opts, progress) {
     const first = this._slot(0);
     if (!first.loaded) await this._load(first, engine, () => {});
     this._expand(engine);
+    // Take an idle loaded worker. While others are still loading, wait for one to be free or ready instead of
+    // queueing behind a busy worker (a sentence queued early would otherwise stay there when more workers come up).
     let best = null;
-    for (let i = 0; i < this.size; i++) {
-      const s = this.slots[i];
-      if (s && s.loaded && (!best || s.busy < best.busy)) best = s;
+    for (;;) {
+      if (this.slots[0] !== first) throw new Error(RESTART_MESSAGE);   // the pool was restarted while this sentence waited
+      best = null;
+      for (let i = 0; i < this.size; i++) {
+        const s = this.slots[i];
+        if (s && s.loaded && (!best || s.busy < best.busy)) best = s;
+      }
+      best = best || first;
+      const loading = this.slots.some((s, i) => s && !s.loaded && s.loading);
+      if (best.busy === 0 || !loading) break;
+      await new Promise((resolve) => {
+        this.waiters.push(resolve);
+        for (const s of this.slots) if (s && s.loading && !s.loaded) s.loading.then(() => this._wake(), () => this._wake());
+      });
     }
-    best = best || first;
     best.busy++;
-    try { return await best.host.call('synth', { engine, text, opts }); } finally { best.busy--; }
+    try { return await best.host.call('synth', { engine, text, opts }, progress); } finally { best.busy--; this._wake(); }
+  }
+
+  /** Let an engine get something ready (Chatterbox: listen to a voice). Runs in worker 0; what it learns is saved for the others. */
+  async prepare(engine, voice, progress) {
+    return this._slot(0).host.call('prepare', { engine, voice }, progress);
   }
 
   /** How many workers are loaded and ready right now (for the status line). */

@@ -3,8 +3,10 @@
 // with the box at the top. The files are checked, then kept in this browser's own storage.
 import {
   SPECS, KOKORO_STARTER, PIPER_VOICES, PIPER_LANGS, MAX_MODEL_BYTES, identify, validateFile, sha256Hex, expectedHash,
-  describeInstalled, kokoroVoiceLabel, piperVoiceList,
+  describeInstalled, kokoroVoiceLabel, piperVoiceList, chatterboxVoiceList,
+  CHATTERBOX_FILES, CHATTERBOX_WRITERS, CHATTERBOX_LM_KEY, CHATTERBOX_LM_DATA_KEY, CHATTERBOX_TOTAL_BYTES, CHATTERBOX_MAX_FILE_BYTES, routeByContent,
 } from './model-specs.js';
+import { prepareReference, voiceId } from './chatterbox-core.js';
 import { saveFile, listFiles, removeFile, removeEngine, persistStorage, estimate } from './model-store.js';
 
 const mb = (n) => (n < 1e6 ? `${Math.max(1, Math.round(n / 1e3))} KB` : `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)} MB`);
@@ -37,7 +39,7 @@ const icon = (name, cls = 'tts-ico') => { const el = h('span', { class: cls, 'ar
  * Wire up the window. `els`: { body, results, input, pick, drop, storage }.
  * `onChange(engineIds)` runs after files were added or removed.
  */
-export function createModelsUI(els, { onChange, audio } = {}) {
+export function createModelsUI(els, { onChange, audio, prepareVoice } = {}) {
   const audioInfo = audio && audio.info;
   const audioClear = audio && audio.clear;
   let records = [];
@@ -233,6 +235,108 @@ export function createModelsUI(els, { onChange, audio } = {}) {
             }, '×')))) : null));
   }
 
+
+  // ---- Chatterbox: big model, plus voices made from the person's own recordings -------------------
+
+  /** Audio file -> mono samples (the browser decodes most formats). */
+  async function decodeAudio(file) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) throw new Error('This browser can’t read audio files.');
+    const ctx = new Ctx();
+    try {
+      const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+      const mono = new Float32Array(buf.length);
+      for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) mono[i] += d[i] / buf.numberOfChannels; }
+      return { samples: mono, sampleRate: buf.sampleRate };
+    } catch { throw new Error('The browser couldn’t read this audio. Try a WAV or MP3 file.'); }
+    finally { try { await ctx.close(); } catch { /* ignore */ } }
+  }
+
+  async function addCloneVoice(file, name, note) {
+    note.className = 'tts-note'; note.textContent = 'Reading the recording…';
+    try {
+      if (file.size > 40e6) throw new Error('This file is too big. Use a clip of 10 to 30 seconds.');
+      const { samples, sampleRate } = await decodeAudio(file);
+      const ref = prepareReference(samples, sampleRate);
+      if (!ref.ok) throw new Error(ref.error);
+      const id = voiceId(name, ref.samples);
+      const blob = new Blob([ref.samples.buffer.slice(ref.samples.byteOffset, ref.samples.byteOffset + ref.samples.byteLength)]);
+      await saveFile('chatterbox', `voices/${id}.ref`, blob, { size: blob.size, sha256: null, verified: null, voiceName: name.slice(0, 40), seconds: Math.round(ref.seconds * 10) / 10 });
+      await persistStorage();
+      // The voice is "made" by listening to the recording once. Do it now, so adding a voice means it is ready.
+      const listener = has('chatterbox', 'onnx/speech_encoder.onnx') && has('chatterbox', 'onnx/speech_encoder.onnx_data');
+      if (prepareVoice && listener) {
+        note.textContent = 'Processing the voice… this takes a minute or two the first time. Keep this window open.';
+        try { await prepareVoice('chatterbox', id, (msg) => { note.textContent = `${msg}`; }); }
+        catch (err) {
+          await removeFile('chatterbox', `voices/${id}.ref`).catch(() => {});
+          throw new Error(`The voice couldn’t be processed: ${(err && err.message) || err}`);
+        }
+        await afterChange(['chatterbox']);
+        say(true, `Voice “${name.slice(0, 40)}” is processed and ready to use.`);
+        return true;
+      }
+      await afterChange(['chatterbox']);
+      return true;
+    } catch (err) {
+      note.className = 'tts-note is-error'; note.textContent = (err && err.message) || String(err);
+      return false;
+    }
+  }
+
+  async function removeCloneVoice(id) {
+    await removeFile('chatterbox', `voices/${id}.ref`);
+    if (has('chatterbox', `voices/${id}.cond`)) await removeFile('chatterbox', `voices/${id}.cond`);
+    await afterChange(['chatterbox']);
+  }
+
+  function writerRows(w) {
+    const lm = recs('chatterbox').find((r) => r.key === CHATTERBOX_LM_KEY);
+    const lmd = recs('chatterbox').find((r) => r.key === CHATTERBOX_LM_DATA_KEY);
+    return [
+      fileRow({ name: w.name, size: 'small', note: 'The writer', file: { name: w.name, href: w.href }, added: Boolean(lm && lm.variant === w.variant) }),
+      fileRow({ name: w.dataName, size: mb(w.size), note: 'The writer’s weights', file: { name: w.dataName, href: w.dataHref }, added: Boolean(lmd && lmd.variant === w.variant) }),
+    ];
+  }
+
+  function renderChatterbox() {
+    const spec = SPECS.chatterbox;
+    const mine = recs('chatterbox');
+    const state = describeInstalled('chatterbox', mine);
+    const voices = chatterboxVoiceList(mine).filter((v) => v.cloned);
+    const rows = spec.files.map((f) => fileRow({ name: f.name, size: f.size >= 1e7 ? mb(f.size) : 'small', note: f.note, file: f, added: has('chatterbox', f.key) }));
+    const nameIn = h('input', { class: 'ink-input', type: 'text', id: 'cbVoiceName', name: 'cbVoiceName', autocomplete: 'off', maxlength: '40', placeholder: 'Name for this voice', 'aria-label': 'Name for this voice' });
+    const fileIn = h('input', { type: 'file', id: 'cbVoiceFile', name: 'cbVoiceFile', accept: 'audio/*,.wav,.mp3,.m4a,.ogg,.flac', 'aria-label': 'Recording of the voice' });
+    const agree = h('input', { type: 'checkbox', id: 'cbConsent' });
+    const note = h('p', { class: 'tts-note', role: 'status' });
+    const go = h('button', { class: 'ink-btn ink-btn--primary', type: 'button', onclick: async () => {
+      const f = fileIn.files[0];
+      if (!f) { note.className = 'tts-note is-error'; note.textContent = 'Choose a recording first.'; return; }
+      if (!agree.checked) { note.className = 'tts-note is-error'; note.textContent = 'Please confirm you have the right to use this voice.'; return; }
+      go.disabled = true;
+      await addCloneVoice(f, nameIn.value.trim() || f.name.replace(/\.[^.]+$/, '') || 'Voice', note);
+      go.disabled = false;
+    } }, 'Add this voice');
+    return card(spec, 'chatterbox', state,
+      h('p', { class: 'tts-note is-warn' }, `Best for short, small projects. Chatterbox gives beautiful results, but it is slow even on a powerful computer (expect minutes per paragraph), and it is a large download: about ${(CHATTERBOX_TOTAL_BYTES / 1e9).toFixed(1)} GB in ${CHATTERBOX_FILES.length + 4} files, with about 2 GB of free memory needed while it runs. It may not fit phones or small devices. For long texts, Kokoro is the better choice.`),
+      group(1, 'The four models', 'Each one is a small .onnx file plus its .onnx_data weights file. Use exactly these: the onnx folder also holds other versions of the writer (fp16, q4f16, full precision) that this app doesn’t use, so don’t download those.',
+        h('ul', { class: 'tts-files' }, rows, ...CHATTERBOX_WRITERS.map((w) => writerRows(w)))),
+      group(2, 'The tokenizer and the built-in voice', 'tokenizer.json is the Chatterbox one (not Kokoro’s). default_voice.wav is optional if you add your own voice below.',
+        h('ul', { class: 'tts-files' },
+          fileRow({ name: spec.tokenizer.name, size: 'a few KB', file: spec.tokenizer, added: has('chatterbox', 'tokenizer.json') }),
+          fileRow({ name: spec.defaultVoice.name, size: '0.7 MB', note: spec.defaultVoice.note, file: spec.defaultVoice, added: has('chatterbox', 'default_voice.wav') }))),
+      group(3, 'Speak in a voice you provide', 'Add a clear recording of 10 seconds or more (one speaker, no music). It is used only in this browser and never uploaded.',
+        h('div', { class: 'tts-clone' }, nameIn, fileIn),
+        h('label', { class: 'tts-consent', for: 'cbConsent' }, agree, ' I own this voice, or I have the speaker’s permission to use it. I won’t use it to deceive or impersonate anyone.'),
+        h('div', {}, go), note,
+        voices.length ? h('div', { class: 'tts-voicechips' },
+          h('span', { class: 'tts-voicechips__label' }, 'Your voices'),
+          voices.map((v) => h('span', { class: 'tts-chip is-ready' }, v.label.replace(' (your recording)', ''), ' ', h('button', {
+            class: 'tts-chip__x', type: 'button', 'aria-label': `Remove ${v.label}`, title: 'Remove this voice',
+            onclick: async () => { await removeCloneVoice(v.id); },
+          }, '×')))) : null));
+  }
+
   function piperVoiceCard(v, added) {
     const hint = h('div', { class: 'tts-file__hint', hidden: true, role: 'status' });
     return h('li', { class: `tts-piper${added ? ' is-added' : ''}` },
@@ -290,8 +394,11 @@ export function createModelsUI(els, { onChange, audio } = {}) {
     const items = [];
     for (const r of records) {
       if (r.engine === 'piper') continue;
+      if (r.engine === 'chatterbox' && /^voices\/.+\.(ref|cond)$/.test(r.key)) continue;   // grouped below
       let name = r.key;
       if (r.engine === 'kitten') name = (SPECS.kitten.files.find((f) => f.key === r.key) || {}).name || r.key;
+      else if (r.engine === 'chatterbox' && r.variant) name = `language_model_${r.variant}.onnx${r.key.endsWith('_data') ? '_data' : ''}`;
+      else if (r.engine === 'chatterbox') name = r.key.replace(/^onnx\//, '');
       else if (r.key === 'model.onnx') name = (SPECS.kokoro.models.find((m) => m.variant === r.variant) || {}).name || 'model.onnx';
       else if (r.key.startsWith('voices/')) name = `${r.key.slice(7, -4)} (voice)`;
       items.push({ engine: r.engine, name, size: r.size || 0, keys: [r.key] });
@@ -303,7 +410,16 @@ export function createModelsUI(els, { onChange, audio } = {}) {
       const p = pairs.get(base); p.size += r.size || 0; p.keys.push(r.key);
     }
     items.push(...pairs.values());
-    const order = ['kitten', 'kokoro', 'piper'];
+    const cb = new Map();
+    for (const r of recs('chatterbox')) {
+      const m = /^voices\/(.+)\.(ref|cond)$/.exec(r.key);
+      if (!m) continue;
+      if (!cb.has(m[1])) cb.set(m[1], { engine: 'chatterbox', name: 'voice', size: 0, keys: [] });
+      const p = cb.get(m[1]); p.size += r.size || 0; p.keys.push(r.key);
+      if (r.voiceName) p.name = `${r.voiceName} (voice)`;
+    }
+    items.push(...cb.values());
+    const order = ['kitten', 'kokoro', 'piper', 'chatterbox'];
     return items.sort((a, b) => order.indexOf(a.engine) - order.indexOf(b.engine) || a.name.localeCompare(b.name));
   }
 
@@ -336,7 +452,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
           onclick: async () => {
             if (!confirm(`Delete all ${items.length} stored model files (${mb(total)}) from this browser? Your text, settings and generated audio stay. You can add the files again later.`)) return;
             await removeEngine();
-            await afterChange(['kitten', 'kokoro', 'piper']);
+            await afterChange(['kitten', 'kokoro', 'piper', 'chatterbox']);
           },
         }, 'Delete all model files') : null),
       items.length ? h('ul', { class: 'tts-store__list' }, rows) : null,
@@ -349,7 +465,7 @@ export function createModelsUI(els, { onChange, audio } = {}) {
 
   async function render() {
     if (!(await reload())) return;
-    els.body.replaceChildren(renderKitten(), renderKokoro(), renderPiper());
+    els.body.replaceChildren(renderKitten(), renderKokoro(), renderPiper(), renderChatterbox());
     if (els.quick) els.quick.replaceChildren(...[renderQuickStart()].filter(Boolean));
     await renderStorage();
   }
@@ -366,25 +482,36 @@ export function createModelsUI(els, { onChange, audio } = {}) {
   }
 
   async function addOne(file) {
-    const info = identify(file.name);
+    let info = identify(file.name);
     if (!info) return say(false, `${file.name}: not a model file this app uses. Skipped.`);
     if (info.error) return say(false, info.error);
-    const limit = info.role === 'model' || info.role === 'piper-model' ? MAX_MODEL_BYTES : 5e6;
+    const limit = info.role === 'cb-data' || info.role === 'cb-model' ? CHATTERBOX_MAX_FILE_BYTES : info.role === 'model' || info.role === 'piper-model' ? MAX_MODEL_BYTES : 5e6;
     if (file.size > limit) return say(false, `${file.name}: too big for a ${info.role} file.`);
     if (file.size === 0) return say(false, `${file.name}: the file is empty.`);
 
     els.results.append(h('li', { class: 'is-wait' }, h('span', { class: 'tts-res__mark', 'aria-hidden': 'true' }, '…'), h('span', {}, `Checking ${file.name}…`)));
     const wait = els.results.lastChild;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const check = validateFile(info, bytes);
-    if (!check.ok) { wait.remove(); return say(false, `${file.name}: ${check.error}`); }
+    // The big weights files are only size-checked: reading 500 MB into memory just to hash it would be wasteful.
+    const big = info.role === 'cb-data';
+    const bytes = big ? new Uint8Array(await file.slice(0, 200000).arrayBuffer()) : new Uint8Array(await file.arrayBuffer());
+    info = routeByContent(info, bytes);
+    const check = big ? { ok: file.size > 1e5 } : validateFile(info, bytes);
+    if (!check.ok) { wait.remove(); return say(false, `${file.name}: ${check.error || 'too small to be a weights file.'}`); }
 
-    const sha256 = await sha256Hex(bytes);
-    const want = expectedHash(info);
+    const sha256 = big ? null : await sha256Hex(bytes);
+    const want = big ? null : expectedHash(info);
     const meta = { size: file.size, sha256, verified: want ? want === sha256 : null };
     if (info.variant) meta.variant = info.variant;
     if (check.summary) meta.piper = check.summary;
-    const replacing = info.role === 'model' && has(info.engine, 'model.onnx');
+    let replacing = info.role === 'model' && has(info.engine, 'model.onnx');
+    if (info.engine === 'chatterbox' && info.variant) {
+      // One writer version at a time: a different one replaces the stored pair, so the two files can't be from different versions.
+      const fresh = await listFiles('chatterbox');   // not the page's cached list: an earlier file of this same drop may already have switched versions
+      const stale = fresh.filter((r) => (r.key === CHATTERBOX_LM_KEY || r.key === CHATTERBOX_LM_DATA_KEY) && r.variant && r.variant !== info.variant);
+      for (const r of stale) await removeFile('chatterbox', r.key);
+      if (stale.length) replacing = true;
+    }
+    if (info.role === 'cb-wav' && has('chatterbox', 'voices/default.cond')) await removeFile('chatterbox', 'voices/default.cond');   // the voice changed: listen again
     try { await saveFile(info.engine, info.key, file, meta); }
     catch (err) { wait.remove(); return say(false, `${file.name}: ${err.message}`); }
     wait.remove();

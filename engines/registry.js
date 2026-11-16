@@ -2,7 +2,7 @@
 // neural engines run in workers behind it, so this module stays light.
 import { WorkerPool } from './pool.js';
 import { builtin } from './builtin.js';
-import { KITTEN_META, KOKORO_META, PIPER_META } from './meta.js';
+import { KITTEN_META, KOKORO_META, PIPER_META, CHATTERBOX_META } from './meta.js';
 
 const workerUrl = new URL('./worker.js', import.meta.url);
 // One pool per engine: each keeps its own workers, so a model is only ever loaded into the workers that use it.
@@ -15,16 +15,18 @@ function remote(meta) {
     ...meta,
     kind: 'pcm',
     load: (progress) => pool.load(meta.id, progress),
-    synth: (text, opts) => pool.synth(meta.id, text, opts),
+    synth: (text, opts, progress) => pool.synth(meta.id, text, opts, progress),
     /** Number of sentences that may be generated at once. */
     workers: () => pool.size,
     /** Change it. Returns true when the workers were restarted (the model has to load again). */
-    setWorkers: (n) => pool.configure(n),
+    setWorkers: (n, auto) => pool.configure(auto && meta.autoWorkers ? Math.min(n, meta.autoWorkers) : n),
+    autoCap: meta.autoWorkers || 0,
     readyWorkers: () => pool.ready(),
+    prepare: (voice, progress) => pool.prepare(meta.id, voice, progress),
     /** Forget the loaded model (its files were replaced or removed): it loads again on next use. */
     reset: () => pool.terminate(),
   };
 }
 
 export { builtin };
-export const ENGINES = [remote(KITTEN_META), remote(KOKORO_META), remote(PIPER_META), builtin];
+export const ENGINES = [remote(KITTEN_META), remote(KOKORO_META), remote(PIPER_META), remote(CHATTERBOX_META), builtin];

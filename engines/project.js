@@ -49,7 +49,7 @@ export function parseProject(raw) {
   const s = data.settings && typeof data.settings === 'object' ? data.settings : {};
   const settings = { ...DEFAULT_FX };
   settings.voice2 = str(s.voice2, 200);
-  for (const k of ['mix', 'pitch', 'gain', 'bass', 'treble', 'gapSentence', 'gapPara']) settings[k] = num(s[k], FX_LIMITS[k], DEFAULT_FX[k]);
+  for (const k of ['mix', 'pitch', 'exaggeration', 'gain', 'bass', 'treble', 'gapSentence', 'gapPara']) settings[k] = num(s[k], FX_LIMITS[k], DEFAULT_FX[k]);
   settings.normalize = s.normalize === true;
   settings.trim = s.trim === true;
   settings.rules = str(s.rules, MAX_RULES);

@@ -6,6 +6,8 @@
 // person downloads them in their own browser and adds them with the upload box. The files then stay
 // in this browser (IndexedDB) and never leave it.
 
+import { parseChatterboxTokenizer, looksLikeChatterboxTokenizer, parseWav } from './chatterbox-core.js';
+
 const HF = 'https://huggingface.co';
 const dl = (base, path) => `${base}/resolve/main/${path}?download=true`;
 // Small text files: Hugging Face shows them in the tab instead of saving them, so the page saves them itself (see models-ui.js).
@@ -34,6 +36,29 @@ export const KOKORO_VOICES = [
 
 /** A short starter set for the guide (the better-graded voices, both accents, both genders). */
 export const KOKORO_STARTER = ['af_heart', 'af_bella', 'bf_emma', 'am_michael', 'bm_george'];
+
+// ---- Chatterbox (Resemble AI, MIT; ONNX conversion by onnx-community) ------------------------------------
+// Big: four ONNX models, each with a separate weights file, about 1.5 GB in all. Only the smallest set is supported.
+const CHATTERBOX_REPO = `${HF}/onnx-community/chatterbox-ONNX`;
+export const CHATTERBOX_MAX_FILE_BYTES = 1.2e9;
+const cbFile = (name, size, note) => ({ key: `onnx/${name}`, name, size, href: dl(CHATTERBOX_REPO, `onnx/${name}`), note });
+export const CHATTERBOX_FILES = [
+  cbFile('embed_tokens.onnx', 0.5e6, 'Text reader (small file)'),
+  cbFile('embed_tokens.onnx_data', 62e6, 'Text reader’s weights'),
+  cbFile('speech_encoder.onnx', 0.5e6, 'Voice listener (small file)'),
+  cbFile('speech_encoder.onnx_data', 592e6, 'Voice listener’s weights'),
+  cbFile('conditional_decoder.onnx', 0.5e6, 'Sound maker (small file)'),
+  cbFile('conditional_decoder.onnx_data', 540e6, 'Sound maker’s weights'),
+];
+export const CHATTERBOX_TOTAL_BYTES = 1.55e9;
+// The writer is stored under one key (and one file name pair): language_model_q4. The other versions in the repository
+// (q4f16, fp16 for graphics cards; full precision, too big for a browser) are not supported (graphics-card versions are shelved).
+export const CHATTERBOX_WRITERS = [
+  { variant: 'q4', size: 354e6, experimental: false, note: 'The writer. Runs on any computer.' },
+].map((w) => ({ ...w, name: `language_model_${w.variant}.onnx`, dataName: `language_model_${w.variant}.onnx_data`,
+  href: dl(CHATTERBOX_REPO, `onnx/language_model_${w.variant}.onnx`), dataHref: dl(CHATTERBOX_REPO, `onnx/language_model_${w.variant}.onnx_data`) }));
+export const CHATTERBOX_LM_KEY = 'onnx/language_model.onnx';
+export const CHATTERBOX_LM_DATA_KEY = 'onnx/language_model.onnx_data';
 
 // ---- Piper (rhasspy/piper-voices) ---------------------------------------------------------------
 // Unlike Kokoro, every Piper voice is a complete model of its own: an .onnx file plus an .onnx.json file that
@@ -109,6 +134,18 @@ export const SPECS = {
     voiceHref: (id) => dl(KOKORO_REPO, `voices/${id}.bin`),
     voicesPageUrl: `${KOKORO_REPO}/tree/main/voices`,
   },
+  chatterbox: {
+    id: 'chatterbox',
+    label: 'Chatterbox',
+    summary: 'Natural, expressive English that can speak in a voice you provide. Best for short, small projects: it is slow even on a powerful computer, and large (about 1.5 GB), so it may not fit phones or small devices.',
+    author: 'Resemble AI (ONNX conversion: onnx-community)',
+    license: 'MIT',
+    pageUrl: CHATTERBOX_REPO,
+    officialPageUrl: `${HF}/ResembleAI/chatterbox`,
+    files: CHATTERBOX_FILES,
+    tokenizer: { key: 'tokenizer.json', name: 'tokenizer.json', size: 28500, href: plain(CHATTERBOX_REPO, 'tokenizer.json'), alt: raw(CHATTERBOX_REPO, 'tokenizer.json'), text: true },
+    defaultVoice: { key: 'default_voice.wav', name: 'default_voice.wav', size: 714e3, href: dl(CHATTERBOX_REPO, 'default_voice.wav'), note: 'The built-in voice. Optional if you add your own.' },
+  },
   piper: {
     id: 'piper',
     label: 'Piper',
@@ -150,7 +187,16 @@ export function identify(rawName) {
   if (lower === 'config.json') return { engine: 'kitten', key: 'config.json', role: 'config', name };
   if (lower === 'kitten_tts_nano_v0_8.onnx') return { engine: 'kitten', key: 'model.onnx', role: 'model', name: lower };
   if (lower === 'voices.npz') return { engine: 'kitten', key: 'voices.npz', role: 'voices', name: lower };
-  if (lower === 'tokenizer.json') return { engine: 'kokoro', key: 'tokenizer.json', role: 'tokenizer', name: lower };
+  if (lower === 'tokenizer.json') return { engine: 'kokoro', key: 'tokenizer.json', role: 'tokenizer', name: lower };   // Chatterbox has one too: see routeByContent
+  if (lower === 'default_voice.wav') return { engine: 'chatterbox', key: 'default_voice.wav', role: 'cb-wav', name: lower };
+  const lw = CHATTERBOX_WRITERS.find((w) => w.name === lower || w.dataName === lower);
+  if (lw) return { engine: 'chatterbox', key: lw.name === lower ? CHATTERBOX_LM_KEY : CHATTERBOX_LM_DATA_KEY, role: lw.name === lower ? 'cb-model' : 'cb-data', name: lower, variant: lw.variant };
+  if (/^language_model\.onnx(_data)?$/.test(lower)) return { error: `${name} is the full-precision writer (2 GB). A browser can’t hold it, so it isn’t supported. Use language_model_q4 (recommended).` };
+  const cf = CHATTERBOX_FILES.find((f) => f.name === lower);
+  if (cf) return { engine: 'chatterbox', key: cf.key, role: lower.endsWith('_data') ? 'cb-data' : 'cb-model', name: lower };
+  if (/^(language_model|embed_tokens|speech_encoder|conditional_decoder)(_[a-z0-9]+)?\.onnx(_data)?$/.test(lower)) {
+    return { error: `${name} is another version of a Chatterbox file that this app can’t use (the onnx folder has extra versions, including graphics-card ones that this app doesn’t support: it needs embed_tokens, speech_encoder, conditional_decoder and language_model_q4, each with its .onnx_data file). Skipped, so nothing is mixed up.` };
+  }
   const km = SPECS.kokoro.models.find((m) => m.name === lower);
   if (km) return { engine: 'kokoro', key: 'model.onnx', role: 'model', name: lower, variant: km.variant };
   const vm = VOICE_RE.exec(lower);
@@ -166,6 +212,14 @@ export function identify(rawName) {
     return { error: `${name} isn’t one of the supported model files. For Kokoro use model_quantized.onnx (recommended) or model.onnx from the onnx folder. A Piper voice is named like en_US-amy-medium.onnx.` };
   }
   return null;
+}
+
+/** tokenizer.json has the same name for Kokoro and Chatterbox: the content says which one this is. */
+export function routeByContent(info, bytes) {
+  if (info && info.role === 'tokenizer' && looksLikeChatterboxTokenizer(new TextDecoder().decode(bytes.subarray(0, Math.min(bytes.length, 2e6))))) {
+    return { engine: 'chatterbox', key: 'tokenizer.json', role: 'cb-tokenizer', name: info.name };
+  }
+  return info;
 }
 
 // ---- checking a file's contents -----------------------------------------------------------------
@@ -277,6 +331,12 @@ export function validateFile(info, bytes) {
   if (info.role === 'tokenizer') { const r = parseTokenizer(new TextDecoder().decode(bytes)); return { ok: r.ok, error: r.error }; }
   if (info.role === 'voice') return validateKokoroVoice(bytes);
   if (info.role === 'piper-config') return validatePiperConfig(new TextDecoder().decode(bytes));
+  if (info.role === 'cb-tokenizer') { const r = parseChatterboxTokenizer(new TextDecoder().decode(bytes)); return { ok: r.ok, error: r.error }; }
+  if (info.role === 'cb-wav') { const r = parseWav(bytes); return { ok: r.ok, error: r.error }; }
+  if (info.role === 'cb-model') {
+    return bytes.length > 100 && bytes[0] === 0x08 ? { ok: true } : { ok: false, error: `${info.name} doesn’t look like an ONNX model. Was it saved as a web page? Use the download link and try again.` };
+  }
+  if (info.role === 'cb-data') return bytes.length > 1e5 ? { ok: true } : { ok: false, error: `${info.name} is too small to be a weights file. Was it saved as a web page?` };
   if (info.role === 'voices') return looksLikeNpz(bytes) ? { ok: true } : { ok: false, error: 'voices.npz should be a zip-style .npz file.' };
   if (info.role === 'model' || info.role === 'piper-model') {
     if (bytes.length > MAX_MODEL_BYTES) return { ok: false, error: 'This file is bigger than any supported model.' };
@@ -324,6 +384,18 @@ export function describeInstalled(engineId, records) {
     const m = has.get('model.onnx');
     return { ready: missing.length === 0, missing, voices, variant: m ? m.variant || '' : '', official: Boolean(m && m.verified) };
   }
+  if (engineId === 'chatterbox') {
+    for (const f of CHATTERBOX_FILES) if (!has.has(f.key)) missing.push(f.name);
+    const lm = records.find((r) => r.key === CHATTERBOX_LM_KEY), lmd = records.find((r) => r.key === CHATTERBOX_LM_DATA_KEY);
+    const w = CHATTERBOX_WRITERS.find((x) => lm && x.variant === lm.variant);
+    if (!lm) missing.push('the writer (language_model_q4.onnx)');
+    if (!lmd) missing.push(`${w ? w.dataName : 'language_model_q4.onnx_data'}`);
+    if (lm && lmd && lm.variant !== lmd.variant) missing.push(`the matching writer weights file (${w ? w.dataName : ''}); the two writer files are from different versions`);
+    if (!has.has('tokenizer.json')) missing.push('tokenizer.json');
+    const voices = chatterboxVoiceList(records);
+    if (!voices.length) missing.push('a voice (default_voice.wav, or add your own recording)');
+    return { ready: missing.length === 0, missing, voices: voices.map((v) => v.id), variant: lm && lm.variant || '', official: true };
+  }
   if (engineId === 'piper') {
     const byBase = new Map();
     for (const r of records) {
@@ -342,6 +414,17 @@ export function describeInstalled(engineId, records) {
     return { ready: complete.length > 0, missing, voices: complete, partial, variant: '', official: true };
   }
   return { ready: false, missing: [], voices: [], variant: '', official: false };
+}
+
+/** Chatterbox voices: the built-in one (default_voice.wav) and the recordings the person added. [{ id, label, cloned }] */
+export function chatterboxVoiceList(records) {
+  const out = [];
+  if (records.some((r) => r.key === 'default_voice.wav')) out.push({ id: 'default', label: 'Default voice', cloned: false });
+  for (const r of records) {
+    const m = /^voices\/(.+)\.ref$/.exec(r.key);
+    if (m) out.push({ id: m[1], label: `${r.voiceName || m[1]} (your recording)`, cloned: true });
+  }
+  return out;
 }
 
 /** “Amy (US, medium)” style labels for the voices of a stored Piper set; multi-speaker voices list every speaker. */

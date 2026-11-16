@@ -4,8 +4,9 @@
 import { kitten } from './kitten.js';
 import { kokoro } from './kokoro.js';
 import { piper } from './piper.js';
+import { chatterbox } from './chatterbox.js';
 
-const engines = { kitten, kokoro, piper };
+const engines = { kitten, kokoro, piper, chatterbox };
 
 // One job at a time: the ONNX sessions aren't meant to be run concurrently, and a new request
 // from the page can arrive while the previous sentence is still being synthesized.
@@ -25,8 +26,12 @@ self.onmessage = async ({ data: { id, method, args } }) => {
       await exclusive(() => engine.load((message) => self.postMessage({ id, type: 'progress', message }), { threads: args.threads }));
       self.postMessage({ id, type: 'done', result: true });
     } else if (method === 'synth') {
-      const out = await exclusive(() => engine.synth(args.text, args.opts));
+      const out = await exclusive(() => engine.synth(args.text, args.opts, (message) => self.postMessage({ id, type: 'progress', message })));
       self.postMessage({ id, type: 'done', result: out }, [out.samples.buffer]);
+    } else if (method === 'prepare') {
+      if (!engine.prepare) throw new Error('This engine has nothing to prepare.');
+      await exclusive(() => engine.prepare(args.voice, (message) => self.postMessage({ id, type: 'progress', message })));
+      self.postMessage({ id, type: 'done', result: true });
     } else {
       throw new Error(`Unknown method: ${method}`);
     }

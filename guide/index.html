@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inknarrate Guide: how to use free offline text to speech</title>
-<meta name="description" content="How to set up and use Inknarrate: add Kitten, Kokoro or Piper voices (English, Spanish, Arabic), generate speech in your browser, export MP3 or WAV, and keep everything private and offline.">
+<meta name="description" content="How to set up and use Inknarrate: add Kitten, Kokoro, Piper or Chatterbox voices (English, Spanish, Arabic), generate speech in your browser, export MP3 or WAV, and keep everything private and offline.">
 <meta name="theme-color" content="#d8d8d8">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -65,6 +65,7 @@
       <tbody>
         <tr><td><strong>Kitten TTS</strong> (nano)</td><td>English, 8 voices</td><td>about 28 MB</td><td>Small and fast, fine on weak computers.</td><td><code>config.json</code>, <code>kitten_tts_nano_v0_8.onnx</code>, <code>voices.npz</code></td></tr>
         <tr><td><strong>Kokoro</strong></td><td>English (US and UK)</td><td>92 MB + about 0.5 MB per voice</td><td>The most natural English; you choose the voices.</td><td><code>model_quantized.onnx</code> (or <code>model.onnx</code>, 326 MB), <code>tokenizer.json</code>, voices like <code>af_heart.bin</code></td></tr>
+        <tr><td><strong>Chatterbox</strong></td><td>English</td><td>about 1.5 GB (large)</td><td>Natural, expressive speech, and it can speak in a voice you provide.</td><td>Four models, each a <code>.onnx</code> plus a <code>.onnx_data</code> file, <code>tokenizer.json</code>, optional <code>default_voice.wav</code></td></tr>
         <tr><td><strong>Piper</strong></td><td>English, Spanish, Arabic</td><td>15 to 110 MB per voice</td><td>Many voices in three languages; add as many as you like.</td><td>Per voice: <code>name.onnx</code> and <code>name.onnx.json</code></td></tr>
       </tbody>
     </table></div>
@@ -72,6 +73,9 @@
     <p>Pick one model file: <code>model_quantized.onnx</code> is the one to start with, and <code>model.onnx</code> is better but slower and heavier. Adding the other later replaces the first. Voices must start with <code>af_</code> or <code>am_</code> (US) or <code>bf_</code> or <code>bm_</code> (UK). Good ones to begin with are Heart, Bella, Emma, Michael and George.</p>
     <h3>Kitten TTS</h3>
     <p>Only the "nano" size is supported. Download the three files from the Kitten card and drop them in together.</p>
+    <h3>Chatterbox (large, and it can clone a voice)</h3>
+    <p>Chatterbox is the biggest model here: about 1.5 GB in 10 files, and it needs around 2 GB of free memory while it runs. It may not fit phones or small devices, and it is slow even on a powerful computer, so it is best for short, small projects. For long texts, Kokoro is the better choice. Download the four models (each is a <code>.onnx</code> file plus its <code>.onnx_data</code> file: <code>language_model_q4</code>, <code>embed_tokens</code>, <code>speech_encoder</code>, <code>conditional_decoder</code>) from the <em>onnx</em> folder of the onnx-community Chatterbox page. The folder also holds other versions of the writer (fp16, q4f16, full precision): don't download those, this app doesn't use them. Also get plus <code>tokenizer.json</code> (the Chatterbox one) and, if you like, <code>default_voice.wav</code>; use the Download buttons in the Models window and drop everything in the box.</p>
+    <p>To speak in a voice of your own, open the Chatterbox card, choose a clear recording (10 seconds or more, one speaker, no music), give it a name, confirm that you have the right to use that voice, and add it. The recording is processed in your browser and never uploaded. Only clone your own voice or one you have permission to use, and don't use it to deceive or impersonate anyone. <strong>Expressiveness</strong> sets how dramatic the delivery is (0.5 is neutral); Chatterbox has no speed control.</p>
     <h3>Piper</h3>
     <p>Every Piper voice is two files with the same base name, for example <code>en_US-ljspeech-medium.onnx</code> and <code>en_US-ljspeech-medium.onnx.json</code>. Download both. A voice appears in the Voice list once both are added. Some voices contain many speakers; each speaker is listed. You can also use any other English, Spanish or Arabic voice from the Piper voices folder on Hugging Face (open a language folder, then a voice, then a quality: "medium" is a good balance). Each voice has its own licence, so read its <em>MODEL_CARD</em> file before using the audio commercially.</p>
     <p>The small <code>config.json</code> and <code>tokenizer.json</code> files are saved for you by their Download buttons. If that doesn't work, a tab opens: press Ctrl+S (Cmd+S on a Mac) and save the file under that exact name.</p>
@@ -145,7 +149,7 @@
 
     <h2 id="licences">Licences</h2>
     <p>Inknarrate is free software under the <a href="../LICENSE">GNU GPL v3 or later</a>. <a href="https://github.com/NadirWeb-App/Inknarrate-OS">The source code is here</a>. It bundles eSpeak NG (GPL), onnxruntime-web (MIT), JSZip, an MP3 encoder (LGPL), the Kitten TTS JavaScript port (Apache-2.0), and fonts under the SIL Open Font Licence. Full texts and credits are in the <a href="../NOTICE.md">notices file</a> and the <a href="../licenses/">licenses folder</a>.</p>
-    <p>The voice models are separate works, not part of Inknarrate, and are not hosted here. Kitten TTS and Kokoro are Apache-2.0. Piper voices have a licence each (see each voice's model card); the voice <em>Sharvard</em> uses speech data under CC BY 3.0 (credit: University of Edinburgh). Voices you add yourself are your responsibility.</p>
+    <p>The voice models are separate works, not part of Inknarrate, and are not hosted here. Kitten TTS and Kokoro are Apache-2.0; Chatterbox is MIT (Resemble AI). Piper voices have a licence each (see each voice's model card); the voice <em>Sharvard</em> uses speech data under CC BY 3.0 (credit: University of Edinburgh). Voices you add yourself are your responsibility.</p>
     <p>Found a problem? <a href="https://github.com/NadirWeb-App/Inknarrate-OS/issues">Report it here</a>.</p>
   </article>
 </main>
